@@ -161,8 +161,8 @@ function App(): React.JSX.Element {
                 formData.append('rotation', imageRotation.toString());
             }
 
-            const bgColorHex = bgRemovalState.backgroundColor.replace('#', '');
-            formData.append('background_color', bgColorHex);
+            // Keep # prefix for valid hex format
+            formData.append('background_color', bgRemovalState.backgroundColor);
 
             const response = await fetch(`${API_URL}/remove-background`, {
                 method: 'POST',
@@ -218,9 +218,8 @@ function App(): React.JSX.Element {
             
             // If background was removed, send color + rotation for processing
             if (bgRemovalState.processedImageData) {
-                // Send selected background color (hex without #)
-                const bgColorHex = bgRemovalState.backgroundColor.replace('#', '');
-                formData.append('background_color', bgColorHex);
+                // Send selected background color (keep # prefix for valid hex format)
+                formData.append('background_color', bgRemovalState.backgroundColor);
                 
                 // Also send rotation angle (in case user rotated before background removal)
                 if (imageRotation !== 0) {
@@ -252,13 +251,16 @@ function App(): React.JSX.Element {
 
             const result = await response.json();
 
-            // Extract plants from per_plant array
-            const plantsArray = (result.per_plant || []).map((plant: any) => ({
-                id: plant.plant_id,
-                root_length_cm: plant.root_length_cm,
-                shoot_length_cm: plant.shoot_length_cm,
-                total_length_cm: plant.total_length_cm
-            }));
+            // Extract plants from per_plant array (use biggest paths, fallback to collective/old format)
+             const plantsArray = (result.per_plant || []).map((plant: any) => ({
+                 id: plant.plant_id,
+                 root_length_cm: plant.biggest_root_length_cm ?? plant.root_length_cm ?? 0,
+                 shoot_length_cm: plant.biggest_shoot_length_cm ?? plant.shoot_length_cm ?? 0,
+                 total_length_cm: plant.biggest_total_length_cm ?? plant.total_length_cm ?? 0,
+                 // Also store collective for comparison
+                 collective_root_length_cm: plant.collective_root_length_cm,
+                 collective_shoot_length_cm: plant.collective_shoot_length_cm,
+             }));
 
             const processedResult = {
                 ...result,
@@ -338,9 +340,15 @@ function App(): React.JSX.Element {
         if (totalSeeds === 0) return null;
 
         const germinationPercentage = (germinatedSeeds / totalSeeds) * 100;
-        const avgRoot = analysisResult.statistics.average_root_length_cm || 0;
-        const avgShoot = analysisResult.statistics.average_shoot_length_cm || 0;
-        const avgLength = avgRoot + avgShoot;
+        
+        // V8: Use biggest path lengths (main vertical path only, ignoring lateral branches)
+        const avgBiggestRoot = analysisResult.statistics.avg_biggest_root_length_cm || 
+                               analysisResult.statistics.average_root_length_cm || 0;
+        const avgBiggestShoot = analysisResult.statistics.avg_biggest_shoot_length_cm || 
+                                analysisResult.statistics.average_shoot_length_cm || 0;
+        const avgLength = avgBiggestRoot + avgBiggestShoot;
+        
+        // SVI = (avg_biggest_root_length_cm + avg_biggest_shoot_length_cm) × germination_percentage
         const svi = avgLength * germinationPercentage;
 
         return {
@@ -348,7 +356,9 @@ function App(): React.JSX.Element {
             germinatedSeeds,
             germinationPercentage: germinationPercentage.toFixed(2),
             avgLength: avgLength.toFixed(2),
-            svi: svi.toFixed(2)
+            svi: svi.toFixed(2),
+            avgBiggestRoot: avgBiggestRoot.toFixed(2),
+            avgBiggestShoot: avgBiggestShoot.toFixed(2),
         };
     };
 
@@ -580,15 +590,15 @@ function App(): React.JSX.Element {
                                             ]}
                                         >
                                             <Text style={[styles.tableCell, styles.tableCellBold, { flex: 0.8 }]}>P{plant.id}</Text>
-                                            <Text style={[styles.tableCell, styles.tableCellRoot, { flex: 1.2 }]}>
-                                                {plant.root_length_cm.toFixed(2)}
-                                            </Text>
-                                            <Text style={[styles.tableCell, styles.tableCellShoot, { flex: 1.2 }]}>
-                                                {plant.shoot_length_cm.toFixed(2)}
-                                            </Text>
-                                            <Text style={[styles.tableCell, styles.tableCellTotal, { flex: 1.2 }]}>
-                                                {plant.total_length_cm.toFixed(2)}
-                                            </Text>
+                                             <Text style={[styles.tableCell, styles.tableCellRoot, { flex: 1.2 }]}>
+                                                 {(plant.biggest_root_length_cm ?? plant.root_length_cm ?? 0).toFixed(2)}
+                                             </Text>
+                                             <Text style={[styles.tableCell, styles.tableCellShoot, { flex: 1.2 }]}>
+                                                 {(plant.biggest_shoot_length_cm ?? plant.shoot_length_cm ?? 0).toFixed(2)}
+                                             </Text>
+                                             <Text style={[styles.tableCell, styles.tableCellTotal, { flex: 1.2 }]}>
+                                                 {(plant.biggest_total_length_cm ?? plant.total_length_cm ?? 0).toFixed(2)}
+                                             </Text>
                                         </View>
                                     ))}
                                 </View>

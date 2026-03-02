@@ -1,3 +1,9 @@
+/**
+ * Plant Measurement App - v9
+ * V9: Improved biggest path extraction with full BFS traversal (max_depth fix)
+ * Last Updated: March 2, 2026
+ */
+
 import React, { useState, useRef } from 'react';
 import {
     SafeAreaView,

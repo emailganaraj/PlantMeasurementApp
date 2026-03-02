@@ -1,6 +1,6 @@
 /**
- * Plant Measurement App - v9
- * V9: Improved biggest path extraction with full BFS traversal (max_depth fix)
+ * Plant Measurement App - v10
+ * V10: Fixed fragmented roots from background removal via morphological dilation
  * Last Updated: March 2, 2026
  */
 
@@ -66,7 +66,8 @@ function App(): React.JSX.Element {
 
     // Physical device IP address
     const API_URL = 'http://10.196.98.32:8002';
-
+ //const API_URL = 'http://10.208.208.82:8002';
+ //const API_URL = 'http://192.168.31.175:8002';
     // Color palette for background selection
     const colorPalette = [
         { name: 'White', hex: '#ffffff' },

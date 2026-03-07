@@ -26,9 +26,12 @@ import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 interface PlantAnalysis {
     plants?: Array<{
         id: number;
-        root_length_cm: number;
-        shoot_length_cm: number;
-        total_length_cm: number;
+        root_length_cm?: number;
+        shoot_length_cm?: number;
+        total_length_cm?: number;
+        biggest_root_length_cm?: number;
+        biggest_shoot_length_cm?: number;
+        biggest_total_length_cm?: number;
     }>;
     image_id?: string;
     timestamp?: string;
@@ -61,11 +64,18 @@ function App(): React.JSX.Element {
     
     // Store original image when background is removed, for re-processing with different colors
     const [bgRemovalOriginalImage, setBgRemovalOriginalImage] = useState<string | null>(null);
+    const [segmentationMethod, setSegmentationMethod] = useState<'classical' | 'deep_learning' | 'plantcv'>('classical');
+    const [plantcvMode, setPlantcvMode] = useState<'onlySegmentation' | 'fullPipeline'>('fullPipeline');
     const { height, width } = useWindowDimensions();
     const zoomScrollRef = useRef<ScrollView>(null);
 
     // Physical device IP address
-    const API_URL = 'http://10.196.98.32:8002';
+    const API_URL = 'http://10.216.7.32:8002';
+   // const API_URL = 'http://localhost:8002';
+    //const API_URL = 'http://10.201.167.32:8002';
+    // const API_URL = 'http://10.125.0.32:8002';
+    // const API_URL = 'http://10.51.87.32:8002';
+    //const API_URL = 'http://10.196.98.32:8002';
  //const API_URL = 'http://10.208.208.82:8002';
  //const API_URL = 'http://192.168.31.175:8002';
     // Color palette for background selection
@@ -216,14 +226,31 @@ function App(): React.JSX.Element {
         try {
             const formData = new FormData();
             
-            // Always send original image
-            formData.append('file', {
-                uri: selectedImage,
-                type: 'image/jpeg',
-                name: 'plant_image.jpg',
-            } as any);
+            // Fetch image as blob
+            const imageToSend = bgRemovalState.processedImageData || selectedImage;
+            if (!imageToSend) {
+                throw new Error('No image selected');
+            }
             
-            // If background was removed, send color + rotation for processing
+            const imageResponse = await fetch(imageToSend);
+            const blob = await imageResponse.blob();
+            
+            // Append blob to formData
+             formData.append('file', blob);
+             
+             // Add segmentation method (classical, deep_learning, or plantcv)
+             formData.append('segmentation_method', segmentationMethod);
+             
+             // ONLY send plantcv_mode if segmentation_method is 'plantcv'
+             if (segmentationMethod === 'plantcv') {
+                 formData.append('plantcv_mode', plantcvMode);
+             }
+             
+             // Always send tracking info
+             formData.append('source', 'mobile');
+             formData.append('client', 'mobile');
+             
+             // If background was removed, send color + rotation for processing
             if (bgRemovalState.processedImageData) {
                 // Send selected background color (keep # prefix for valid hex format)
                 formData.append('background_color', bgRemovalState.backgroundColor);
@@ -243,12 +270,13 @@ function App(): React.JSX.Element {
                 }
             }
 
+            // Add segmentation method
+            formData.append('segmentation_method', segmentationMethod);
+
             const response = await fetch(`${API_URL}/analyze`, {
                 method: 'POST',
                 body: formData,
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
+                // DO NOT set Content-Type header - FormData handles it automatically
             });
 
             if (!response.ok) {
@@ -536,6 +564,114 @@ function App(): React.JSX.Element {
                         </>
                     )}
                 </View>
+
+                {/* Segmentation Method Selection */}
+                {selectedImage && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>⚙️ Segmentation Method</Text>
+                        
+                        {/* Main Method Selector - 3 options */}
+                        <View style={styles.methodButtonContainer}>
+                            <TouchableOpacity
+                                style={[
+                                    styles.methodButton,
+                                    segmentationMethod === 'classical' && styles.methodButtonActive
+                                ]}
+                                onPress={() => setSegmentationMethod('classical')}
+                            >
+                                <Text style={[
+                                    styles.methodButtonText,
+                                    segmentationMethod === 'classical' && styles.methodButtonTextActive
+                                ]}>
+                                    Classical CV
+                                </Text>
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity
+                                style={[
+                                    styles.methodButton,
+                                    segmentationMethod === 'deep_learning' && styles.methodButtonActive
+                                ]}
+                                onPress={() => setSegmentationMethod('deep_learning')}
+                            >
+                                <Text style={[
+                                    styles.methodButtonText,
+                                    segmentationMethod === 'deep_learning' && styles.methodButtonTextActive
+                                ]}>
+                                    Deep Learning
+                                </Text>
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity
+                                style={[
+                                    styles.methodButton,
+                                    segmentationMethod === 'plantcv' && styles.methodButtonActive
+                                ]}
+                                onPress={() => setSegmentationMethod('plantcv')}
+                            >
+                                <Text style={[
+                                    styles.methodButtonText,
+                                    segmentationMethod === 'plantcv' && styles.methodButtonTextActive
+                                ]}>
+                                    PlantCV
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                        
+                        <Text style={styles.methodHint}>
+                            {segmentationMethod === 'classical' && 'Fast, precise thresholding method'}
+                            {segmentationMethod === 'deep_learning' && 'U-Net deep learning segmentation'}
+                            {segmentationMethod === 'plantcv' && 'Specialized plant vision algorithm'}
+                        </Text>
+                        
+                        {/* PlantCV Mode Selector - ONLY shown when segmentation_method = 'plantcv' */}
+                        {segmentationMethod === 'plantcv' && (
+                            <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#e0e0e0' }}>
+                                <Text style={{ fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 10 }}>Analysis Mode:</Text>
+                                <View style={styles.methodButtonContainer}>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.methodButton,
+                                            { flex: 1 },
+                                            plantcvMode === 'onlySegmentation' && styles.methodButtonActive
+                                        ]}
+                                        onPress={() => setPlantcvMode('onlySegmentation')}
+                                    >
+                                        <Text style={[
+                                            styles.methodButtonText,
+                                            { fontSize: 13 },
+                                            plantcvMode === 'onlySegmentation' && styles.methodButtonTextActive
+                                        ]}>
+                                            Seg Only
+                                        </Text>
+                                    </TouchableOpacity>
+                                    
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.methodButton,
+                                            { flex: 1 },
+                                            plantcvMode === 'fullPipeline' && styles.methodButtonActive
+                                        ]}
+                                        onPress={() => setPlantcvMode('fullPipeline')}
+                                    >
+                                        <Text style={[
+                                            styles.methodButtonText,
+                                            { fontSize: 13 },
+                                            plantcvMode === 'fullPipeline' && styles.methodButtonTextActive
+                                        ]}>
+                                            Full Pipeline
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <Text style={styles.methodHint}>
+                                    {plantcvMode === 'onlySegmentation' 
+                                        ? 'PlantCV seg + classical measurement' 
+                                        : 'Complete PlantCV analysis'}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                )}
 
                 {/* Analyze Button */}
                 <View style={styles.analyzeSection}>
@@ -1475,6 +1611,41 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         marginTop: 12,
         overflow: 'hidden',
+    },
+    methodButtonContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 12,
+    },
+    methodButton: {
+        flex: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        borderWidth: 2,
+        borderColor: '#64748b',
+        backgroundColor: '#f1f5f9',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    methodButtonActive: {
+        backgroundColor: '#0ea5e9',
+        borderColor: '#0284c7',
+    },
+    methodButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#334155',
+    },
+    methodButtonTextActive: {
+        color: '#fff',
+    },
+    methodHint: {
+        fontSize: 12,
+        color: '#64748b',
+        marginTop: 8,
+        fontStyle: 'italic',
+        textAlign: 'center',
     },
 
 });

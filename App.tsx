@@ -65,7 +65,8 @@ function App(): React.JSX.Element {
     const zoomScrollRef = useRef<ScrollView>(null);
 
     // Physical device IP address
-    const API_URL = 'http://10.196.98.32:8002';
+  const API_URL = 'http://10.235.171.32:8002';
+   // const API_URL = 'http://10.196.98.32:8002';
  //const API_URL = 'http://10.208.208.82:8002';
  //const API_URL = 'http://192.168.31.175:8002';
     // Color palette for background selection
@@ -83,12 +84,12 @@ function App(): React.JSX.Element {
     ];
 
     const captureImage = () => {
-        launchCamera(
-            {
-                mediaType: 'photo',
-                cameraType: 'back',
-                quality: 0.9,
-            },
+         launchCamera(
+             {
+                 mediaType: 'photo',
+                 cameraType: 'back',
+                 quality: 1,  // 100% quality - preserve thin roots/shoots
+             },
             (response) => {
                 if (response.didCancel) {
                     console.log('Camera cancelled');
@@ -114,7 +115,7 @@ function App(): React.JSX.Element {
         launchImageLibrary(
             {
                 mediaType: 'photo',
-                quality: 0.9,
+                quality: 1,  // 100% quality - preserve thin roots/shoots
             },
             (response) => {
                 if (response.didCancel) {
@@ -156,9 +157,10 @@ function App(): React.JSX.Element {
 
         setBgRemovalState(prev => ({ ...prev, isRemoving: true }));
         try {
+            console.log('Starting background removal...');
             const formData = new FormData();
             formData.append('file', {
-                uri: bgRemovalState.processedImageData ? selectedImage : selectedImage,
+                uri: selectedImage,
                 type: 'image/jpeg',
                 name: 'plant_image.jpg',
             } as any);
@@ -171,6 +173,7 @@ function App(): React.JSX.Element {
             // Keep # prefix for valid hex format
             formData.append('background_color', bgRemovalState.backgroundColor);
 
+            console.log(`Fetching ${API_URL}/remove-background`);
             const response = await fetch(`${API_URL}/remove-background`, {
                 method: 'POST',
                 body: formData,
@@ -179,12 +182,14 @@ function App(): React.JSX.Element {
                 },
             });
 
+            console.log('Remove background response status:', response.status);
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
             }
 
             const result = await response.json();
+            console.log('Remove background result received, image_data length:', result.image_data?.length);
             
             // Store original image for re-processing with different colors
             setBgRemovalOriginalImage(selectedImage);
@@ -199,7 +204,8 @@ function App(): React.JSX.Element {
             Alert.alert('Success', 'Background removed! Select a color or click Analyze.');
         } catch (error: any) {
             const errorMessage = error?.message || String(error) || 'Unknown error';
-            console.log('Background removal error:', errorMessage);
+            console.error('Background removal error:', errorMessage);
+            console.error('Full error:', error);
             Alert.alert('Error', `Failed to remove background: ${errorMessage}`);
         } finally {
             setBgRemovalState(prev => ({ ...prev, isRemoving: false }));
@@ -207,41 +213,45 @@ function App(): React.JSX.Element {
     };
 
     const analyzeImage = async () => {
-        if (!selectedImage && !bgRemovalState.processedImageData) {
-            Alert.alert('Error', 'Please select an image first');
-            return;
-        }
+         if (!selectedImage && !bgRemovalState.processedImageData) {
+             Alert.alert('Error', 'Please select an image first');
+             return;
+         }
 
-        setLoading(true);
-        try {
-            const formData = new FormData();
-            
-            // Always send original image
-            formData.append('file', {
-                uri: selectedImage,
-                type: 'image/jpeg',
-                name: 'plant_image.jpg',
-            } as any);
-            
-            // If background was removed, send color + rotation for processing
-            if (bgRemovalState.processedImageData) {
-                // Send selected background color (keep # prefix for valid hex format)
-                formData.append('background_color', bgRemovalState.backgroundColor);
-                
-                // Also send rotation angle (in case user rotated before background removal)
-                if (imageRotation !== 0) {
-                    formData.append('rotation', imageRotation.toString());
-                }
-                
-                console.log(`Analyzing: ORIGINAL + ROTATION(${imageRotation}°) + COLOR (${bgRemovalState.backgroundColor} background)`);
-            } else {
-                console.log('Analyzing: ORIGINAL image only (background NOT removed)');
-                
-                // Send rotation angle only for original images
-                if (imageRotation !== 0) {
-                    formData.append('rotation', imageRotation.toString());
-                }
-            }
+         setLoading(true);
+         try {
+             const formData = new FormData();
+             
+             // Always send original image (React Native doesn't support Blob API)
+             formData.append('file', {
+                 uri: selectedImage,
+                 type: 'image/jpeg',
+                 name: 'plant_image.jpg',
+             } as any);
+             
+             // If background was removed, send color + rotation for processing
+             if (bgRemovalState.processedImageData) {
+                 // Send selected background color (keep # prefix for valid hex format)
+                 formData.append('background_color', bgRemovalState.backgroundColor);
+                 
+                 // Also send rotation angle (in case user rotated before background removal)
+                 if (imageRotation !== 0) {
+                     formData.append('rotation', imageRotation.toString());
+                 }
+                 
+                 console.log(`Analyzing: ORIGINAL + ROTATION(${imageRotation}°) + COLOR (${bgRemovalState.backgroundColor} background)`);
+             } else {
+                 console.log('Analyzing: ORIGINAL image only (background NOT removed)');
+                 
+                 // Send rotation angle only for original images
+                 if (imageRotation !== 0) {
+                     formData.append('rotation', imageRotation.toString());
+                 }
+             }
+             
+             // Add source and client metadata
+             formData.append('source', 'mobile');
+             formData.append('client', 'react-native');
 
             const response = await fetch(`${API_URL}/analyze`, {
                 method: 'POST',
@@ -288,28 +298,27 @@ function App(): React.JSX.Element {
     };
 
     const testConnection = async () => {
-        try {
-            console.log(`Testing connection to ${API_URL}/health`);
-            const response = await fetch(`${API_URL}/health`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-            console.log('Health response:', response.status, response.ok);
+         try {
+             console.log(`Testing connection to ${API_URL}/health`);
+             const response = await fetch(`${API_URL}/health`, {
+                 method: 'GET',
+                 timeout: 10000,  // 10 second timeout
+             });
+             console.log('Health response:', response.status, response.ok);
 
-            if (response.ok) {
-                const data = await response.json();
-                Alert.alert('✅ Connected!', `Backend is reachable!\n\nResponse: ${JSON.stringify(data)}`);
-            } else {
-                Alert.alert('⚠️ Response Error', `Status: ${response.status}`);
-            }
-        } catch (error: any) {
-            const errorMsg = error?.message || String(error);
-            console.log('Connection test error:', errorMsg);
-            Alert.alert('❌ Connection Failed', `Cannot reach ${API_URL}\n\nError: ${errorMsg}`);
-        }
-    };
+             if (response.ok) {
+                 const data = await response.json();
+                 Alert.alert('✅ Connected!', `Backend is reachable!\n\nService: ${data.service}\nVersion: ${data.version}`);
+             } else {
+                 Alert.alert('⚠️ Response Error', `Status: ${response.status}`);
+             }
+         } catch (error: any) {
+             const errorMsg = error?.message || String(error);
+             console.log('Connection test error:', errorMsg);
+             console.log('API_URL being tested:', API_URL);
+             Alert.alert('❌ Connection Failed', `Cannot reach ${API_URL}\n\nError: ${errorMsg}\n\nMake sure:\n1. Backend is running\n2. IP address is correct\n3. Both devices on same network`);
+         }
+     };
 
     const clearResults = () => {
         Alert.alert('Clear Analysis', 'Remove all results and images?', [
@@ -523,7 +532,7 @@ function App(): React.JSX.Element {
                                                  { backgroundColor: bgRemovalState.backgroundColor }
                                              ]}>
                                                  <Image
-                                                     source={{ uri: bgRemovalState.processedImageData }}
+                                                     source={{ uri: `data:image/png;base64,${bgRemovalState.processedImageData}` }}
                                                      style={{ width: '100%', height: '100%' }}
                                                      resizeMode="contain"
                                                  />

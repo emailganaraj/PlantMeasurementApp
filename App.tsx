@@ -64,11 +64,9 @@ function App(): React.JSX.Element {
     const { height, width } = useWindowDimensions();
     const zoomScrollRef = useRef<ScrollView>(null);
 
-    // Physical device IP address
-  const API_URL = 'http://10.235.171.32:8002';
-   // const API_URL = 'http://10.196.98.32:8002';
- //const API_URL = 'http://10.208.208.82:8002';
- //const API_URL = 'http://192.168.31.175:8002';
+    // Import from config (supports local/remote)
+  const { API_CONFIG } = require('./src/config');
+  const API_URL = API_CONFIG.BASE_URL;
     // Color palette for background selection
     const colorPalette = [
         { name: 'White', hex: '#ffffff' },

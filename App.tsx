@@ -1,7 +1,7 @@
 /**
- * Plant Measurement App - v10
- * V10: Fixed fragmented roots from background removal via morphological dilation
- * Last Updated: March 2, 2026
+ * Plant Measurement App - V25
+ * V25: Environment-aware deployment - local/remote config support
+ * Last Updated: March 12, 2026
  */
 
 import React, { useState, useRef } from 'react';

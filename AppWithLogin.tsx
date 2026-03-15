@@ -1,3 +1,5 @@
+import 'react-native-gesture-handler';
+import 'react-native-gesture-handler';
 /**
  * Plant Measurement App - V26
  * V26: Login/Logout session management with AsyncStorage

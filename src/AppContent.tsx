@@ -44,22 +44,7 @@ interface BackgroundRemovalState {
 
 interface AppContentProps {
     userId: string;
-    selectedImage: string | null;
-    setSelectedImage: (image: string | null) => void;
-    loading: boolean;
-    setLoading: (loading: boolean) => void;
-    analysisResult: PlantAnalysis | null;
-    setAnalysisResult: (result: PlantAnalysis | null) => void;
-    zoomModalVisible: boolean;
-    setZoomModalVisible: (visible: boolean) => void;
-    zoomScale: number;
-    setZoomScale: (scale: number) => void;
-    imageRotation: number;
-    setImageRotation: (rotation: number) => void;
-    bgRemovalState: BackgroundRemovalState;
-    setBgRemovalState: (state: BackgroundRemovalState) => void;
-    bgRemovalOriginalImage: string | null;
-    setBgRemovalOriginalImage: (image: string | null) => void;
+    apiUrl: string;
 }
 
 interface AnalysisMetadata {
@@ -71,31 +56,29 @@ interface AnalysisMetadata {
 
 function AppContent({
     userId,
-    selectedImage,
-    setSelectedImage,
-    loading,
-    setLoading,
-    analysisResult,
-    setAnalysisResult,
-    zoomModalVisible,
-    setZoomModalVisible,
-    zoomScale,
-    setZoomScale,
-    imageRotation,
-    setImageRotation,
-    bgRemovalState,
-    setBgRemovalState,
-    bgRemovalOriginalImage,
-    setBgRemovalOriginalImage,
+    apiUrl,
 }: AppContentProps): React.JSX.Element {
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [analysisResult, setAnalysisResult] = useState<PlantAnalysis | null>(null);
+    const [zoomModalVisible, setZoomModalVisible] = useState(false);
+    const [zoomScale, setZoomScale] = useState(1);
+    const [imageRotation, setImageRotation] = useState(0);
+    const [bgRemovalState, setBgRemovalState] = useState<BackgroundRemovalState>({
+      isRemoving: false,
+      showColorPalette: false,
+      backgroundColor: '#ffffff',
+      processedImageData: null,
+    });
+    const [bgRemovalOriginalImage, setBgRemovalOriginalImage] = useState<string | null>(null);
+
     const { height, width } = useWindowDimensions();
     const zoomScrollRef = useRef<ScrollView>(null);
     const [showMetadataModal, setShowMetadataModal] = useState(false);
     const [analysisMetadata, setAnalysisMetadata] = useState<AnalysisMetadata | null>(null);
 
-    // Import from config (supports local/remote)
-    const { API_CONFIG } = require('./config');
-    const API_URL = API_CONFIG.BASE_URL;
+    // Use apiUrl from props
+    const API_URL = apiUrl;
     
     // Color palette for background selection
     const colorPalette = [

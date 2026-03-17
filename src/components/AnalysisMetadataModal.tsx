@@ -95,7 +95,7 @@ export const AnalysisMetadataModal: React.FC<AnalysisMetadataModalProps> = ({
               <Text style={styles.label}>Analysis Name</Text>
               <TextInput
                 style={styles.input}
-                placeholder="e.g., Batch A - Week 1"
+                placeholder="e.g., Seed Name - Batch A - Week 1"
                 placeholderTextColor="#9ca3af"
                 value={name}
                 onChangeText={setName}

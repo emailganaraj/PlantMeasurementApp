@@ -55,6 +55,17 @@ const AnalysisHistoryScreen: React.FC<AnalysisHistoryProps> = ({ userId, apiUrl 
         // SVI = (Avg Length in cm) * (Germination Percentage as a whole number)
         const svi = avgLength * germinationPercentage;
 
+        // Manual measurements (if available)
+        const manualMeasurements = item.manual_measurements?.measurements || [];
+        let manualAvgLength = 0;
+        let manualSvi = 0;
+        if (manualMeasurements.length > 0) {
+          const totalManualLength = manualMeasurements.reduce((acc: number, m: any) => 
+            acc + (m.root_length_cm + m.shoot_length_cm), 0);
+          manualAvgLength = totalManualLength / manualMeasurements.length;
+          manualSvi = manualAvgLength * germinationPercentage;
+        }
+
         const runNumber = analyses.length - index;
         const date = new Date(item.timestamp).toLocaleDateString();
         const time = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -80,19 +91,33 @@ const AnalysisHistoryScreen: React.FC<AnalysisHistoryProps> = ({ userId, apiUrl 
                     <Text style={styles.dateTime}>{date} at {time}</Text>
 
                     <View style={styles.statsGrid}>
-                        <View style={styles.statBox}>
-                            <Text style={styles.statLabel}>Germination</Text>
-                            <Text style={styles.statValue}>{germinationPercentage.toFixed(0)}%</Text>
-                        </View>
-                        <View style={styles.statBox}>
-                            <Text style={styles.statLabel}>Avg. Length</Text>
-                            <Text style={styles.statValue}>{avgLength.toFixed(2)} cm</Text>
-                        </View>
-                        <View style={[styles.statBox, styles.sviStatBox]}>
-                            <Text style={[styles.statLabel, styles.sviLabel]}>SVI</Text>
-                            <Text style={[styles.statValue, styles.sviValue]}>{svi.toFixed(0)}</Text>
-                        </View>
-                    </View>
+                         <View style={styles.statBox}>
+                             <Text style={styles.statLabel}>Germ %</Text>
+                             <Text style={styles.statValue}>{germinationPercentage.toFixed(0)}%</Text>
+                         </View>
+                         <View style={styles.statBox}>
+                             <Text style={styles.statLabel}>Avg Len</Text>
+                             <Text style={styles.statValue}>{avgLength.toFixed(2)}</Text>
+                         </View>
+                         <View style={[styles.statBox, styles.sviStatBox, { minWidth: 55 }]}>
+                             <Text style={[styles.statLabel, styles.sviLabel]}>SVI</Text>
+                             <Text style={[styles.statValue, styles.sviValue, { fontSize: 12 }]}>{svi.toFixed(0)}</Text>
+                         </View>
+                     </View>
+
+                     {/* Manual Measurements Row */}
+                     {manualAvgLength > 0 && (
+                       <View style={[styles.statsGrid, styles.manualStatsGrid]}>
+                         <View style={styles.statBox}>
+                             <Text style={styles.statLabel}>Avg. Length (Manual)</Text>
+                             <Text style={styles.statValue}>{manualAvgLength.toFixed(2)} cm</Text>
+                         </View>
+                         <View style={[styles.statBox, styles.sviStatBoxManual]}>
+                             <Text style={[styles.statLabel, styles.sviLabelManual]}>SVI (Manual)</Text>
+                             <Text style={[styles.statValue, styles.sviValueManual]}>{manualSvi.toFixed(0)}</Text>
+                         </View>
+                       </View>
+                     )}
                 </View>
             </TouchableOpacity>
         );
@@ -204,6 +229,21 @@ const styles = StyleSheet.create({
     },
     sviValue: {
         color: '#f59e0b',
+    },
+    manualStatsGrid: {
+        marginTop: 8,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#e5e7eb',
+    },
+    sviStatBoxManual: {
+        backgroundColor: '#f3e8ff',
+    },
+    sviLabelManual: {
+        color: '#7c3aed',
+    },
+    sviValueManual: {
+        color: '#7c3aed',
     },
     emptyText: {
         textAlign: 'center',

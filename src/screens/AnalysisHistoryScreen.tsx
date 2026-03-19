@@ -6,9 +6,10 @@
  * - Correctly calculates and displays SVI, germination %, and analysis name.
  * - Passes all required data to the detail screen.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Image } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../theme';
 
 interface AnalysisHistoryProps {
     userId: string;
@@ -40,7 +41,7 @@ const AnalysisHistoryScreen: React.FC<AnalysisHistoryProps> = ({ userId, apiUrl 
     useFocusEffect(
         useCallback(() => {
             fetchAnalyses();
-        }, [userId, apiUrl])
+        }, [])
     );
 
     const renderItem = ({ item, index }: { item: any, index: number }) => {
@@ -99,9 +100,9 @@ const AnalysisHistoryScreen: React.FC<AnalysisHistoryProps> = ({ userId, apiUrl 
                              <Text style={styles.statLabel}>Avg Len</Text>
                              <Text style={styles.statValue}>{avgLength.toFixed(2)}</Text>
                          </View>
-                         <View style={[styles.statBox, styles.sviStatBox, { minWidth: 55 }]}>
+                         <View style={[styles.statBox, styles.sviStatBox, styles.sviStatBoxMinWidth]}>
                              <Text style={[styles.statLabel, styles.sviLabel]}>SVI</Text>
-                             <Text style={[styles.statValue, styles.sviValue, { fontSize: 12 }]}>{svi.toFixed(0)}</Text>
+                             <Text style={[styles.statValue, styles.sviValue, styles.sviValueSmallText]}>{svi.toFixed(0)}</Text>
                          </View>
                      </View>
 
@@ -124,7 +125,7 @@ const AnalysisHistoryScreen: React.FC<AnalysisHistoryProps> = ({ userId, apiUrl 
     };
 
     if (loading && analyses.length === 0) {
-        return <ActivityIndicator size="large" color="#16a34a" style={{ flex: 1 }} />;
+        return <ActivityIndicator size="large" color={Colors.primary} style={styles.loadingIndicator} />;
     }
 
     return (
@@ -133,10 +134,10 @@ const AnalysisHistoryScreen: React.FC<AnalysisHistoryProps> = ({ userId, apiUrl 
             renderItem={renderItem}
             keyExtractor={item => item.id}
             style={styles.container}
-            contentContainerStyle={{ padding: 10 }}
+            contentContainerStyle={{ padding: Spacing[5] }}
             ListEmptyComponent={<Text style={styles.emptyText}>No analyses found.</Text>}
             refreshControl={
-                <RefreshControl refreshing={loading} onRefresh={fetchAnalyses} colors={["#16a34a"]} />
+                <RefreshControl refreshing={loading} onRefresh={fetchAnalyses} colors={[Colors.primary]} />
             }
         />
     );
@@ -145,29 +146,25 @@ const AnalysisHistoryScreen: React.FC<AnalysisHistoryProps> = ({ userId, apiUrl 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f0fdf4',
+        backgroundColor: Colors.primaryBg,
     },
     card: {
-        backgroundColor: '#ffffff',
-        borderRadius: 16,
-        padding: 16,
-        marginVertical: 8,
-        marginHorizontal: 4,
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.lg,
+        padding: Spacing[8],
+        marginVertical: Spacing[2],
+        marginHorizontal: Spacing[1],
         flexDirection: 'row',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        ...Shadows.sm,
         borderLeftWidth: 5,
-        borderLeftColor: '#16a34a',
+        borderLeftColor: Colors.primary,
     },
     thumbnail: {
         width: 80,
         height: 80,
-        borderRadius: 12,
-        backgroundColor: '#f0f0f0',
-        marginRight: 16,
+        borderRadius: BorderRadius.md,
+        backgroundColor: Colors.gray100,
+        marginRight: Spacing[8],
     },
     cardContent: {
         flex: 1,
@@ -176,28 +173,28 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: 4,
+        marginBottom: Spacing[1],
     },
     analysisName: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#1f2937',
+        fontSize: Typography.sizes.lg,
+        fontWeight: Typography.weights.bold,
+        color: Colors.gray800,
         flex: 1,
     },
     runNumber: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: '#fff',
-        backgroundColor: '#8b5cf6',
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 8,
+        fontSize: Typography.sizes.sm,
+        fontWeight: Typography.weights.bold,
+        color: Colors.white,
+        backgroundColor: Colors.purple,
+        paddingHorizontal: Spacing[2],
+        paddingVertical: Spacing[1],
+        borderRadius: BorderRadius.sm,
         overflow: 'hidden',
     },
     dateTime: {
-        fontSize: 12,
-        color: '#6b7280',
-        marginBottom: 12,
+        fontSize: Typography.sizes.sm,
+        color: Colors.gray500,
+        marginBottom: Spacing[3],
     },
     statsGrid: {
         flexDirection: 'row',
@@ -205,51 +202,60 @@ const styles = StyleSheet.create({
     },
     statBox: {
         alignItems: 'center',
-        backgroundColor: '#f3f4f6',
-        borderRadius: 8,
-        paddingVertical: 8,
-        paddingHorizontal: 10,
+        backgroundColor: Colors.gray100,
+        borderRadius: BorderRadius.sm,
+        paddingVertical: Spacing[2],
+        paddingHorizontal: Spacing[5],
         minWidth: 70,
     },
     sviStatBox: {
-        backgroundColor: '#fffbeb',
+        backgroundColor: Colors.accentBg,
     },
     statLabel: {
-        fontSize: 11,
-        color: '#4b5563',
-        fontWeight: '600',
+        fontSize: Typography.sizes.xs,
+        color: Colors.gray600,
+        fontWeight: Typography.weights.semibold,
     },
     sviLabel: {
-        color: '#d97706',
+        color: Colors.warning,
     },
     statValue: {
         fontSize: 14,
-        fontWeight: 'bold',
-        color: '#16a34a',
+        fontWeight: Typography.weights.bold,
+        color: Colors.primary,
     },
     sviValue: {
-        color: '#f59e0b',
+        color: Colors.warning,
     },
     manualStatsGrid: {
-        marginTop: 8,
-        paddingTop: 8,
+        marginTop: Spacing[2],
+        paddingTop: Spacing[2],
         borderTopWidth: 1,
-        borderTopColor: '#e5e7eb',
+        borderTopColor: Colors.gray200,
     },
     sviStatBoxManual: {
-        backgroundColor: '#f3e8ff',
+        backgroundColor: Colors.purpleLight,
     },
     sviLabelManual: {
-        color: '#7c3aed',
+        color: Colors.purpleDark,
     },
     sviValueManual: {
-        color: '#7c3aed',
+        color: Colors.purpleDark,
     },
     emptyText: {
         textAlign: 'center',
         marginTop: 50,
-        fontSize: 16,
-        color: '#6b7280',
+        fontSize: Typography.sizes.md,
+        color: Colors.gray500,
+    },
+    loadingIndicator: {
+        flex: 1,
+    },
+    sviStatBoxMinWidth: {
+        minWidth: 55,
+    },
+    sviValueSmallText: {
+        fontSize: Typography.sizes.sm,
     },
 });
 

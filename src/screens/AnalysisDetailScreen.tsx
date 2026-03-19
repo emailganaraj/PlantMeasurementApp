@@ -8,7 +8,7 @@
  * - Displays all metadata correctly.
  * - Includes manual measurement submission and side-by-side comparison.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,12 +16,9 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  Modal,
-  SafeAreaView,
-  ActivityIndicator,
-  Platform,
   Alert,
 } from 'react-native';
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../theme';
 import ZoomableImageModal from './ZoomableImageModal';
 import ManualMeasurementModal from '../components/ManualMeasurementModal';
 
@@ -30,7 +27,6 @@ const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: a
   const [zoomModalVisible, setZoomModalVisible] = React.useState(false);
   const [manualModalVisible, setManualModalVisible] = React.useState(false);
   const [manualMeasurements, setManualMeasurements] = React.useState<any>(null);
-  const [loadingManual, setLoadingManual] = React.useState(false);
 
   // Safely get metadata
   const analysisName = analysis.analysis_name || 'Untitled Analysis';
@@ -80,11 +76,10 @@ const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: a
 
   const loadManualMeasurements = async () => {
     try {
-      setLoadingManual(true);
       const userId = analysis?.user_id || 'user';
-      const analysisId = analysis?.id || '';
-      console.log('Loading manual measurements for:', { analysisId, userId });
-      const response = await fetch(`${apiUrl}/manual-measurements/${analysisId}?user_id=${userId}`);
+      const analysisIdLocal = analysis?.id || '';
+      console.log('Loading manual measurements for:', { analysisIdLocal, userId });
+      const response = await fetch(`${apiUrl}/manual-measurements/${analysisIdLocal}?user_id=${userId}`);
       console.log('Response status:', response.status);
       if (response.ok) {
         const data = await response.json();
@@ -97,8 +92,6 @@ const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: a
     } catch (error) {
       console.error('Failed to load manual measurements:', error);
       setManualMeasurements(null);
-    } finally {
-      setLoadingManual(false);
     }
   };
 
@@ -218,7 +211,7 @@ const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: a
             </View>
             
             {/* AI Data Rows */}
-            {plants.map((plant, idx) => (
+            {plants.map((plant) => (
               <View key={`ai-${plant.id}`} style={[tableStyles.tableRow, tableStyles.aiRow]}>
                 <Text style={[tableStyles.tableCell, tableStyles.tableCellBold, { flex: 0.6 }]}>P{plant.id}</Text>
                 <Text style={[tableStyles.tableCell, tableStyles.tableCellRoot, { flex: 1.1 }]}>{plant.root_length_cm.toFixed(2)}</Text>
@@ -295,30 +288,26 @@ const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: a
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0fdf4',
-    padding: 10,
+    backgroundColor: Colors.primaryBg,
+    padding: Spacing[5],
   },
   headerRight: {
-    paddingRight: 16,
+    paddingRight: Spacing[8],
     alignItems: 'flex-end',
   },
   headerDateTime: {
-    fontSize: 11,
-    color: '#666',
+    fontSize: Typography.sizes.xs,
+    color: Colors.gray500,
     lineHeight: 14,
   },
   section: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing[8],
+    marginBottom: Spacing[3],
+    ...Shadows.xs,
     borderLeftWidth: 4,
-    borderLeftColor: '#16a34a',
+    borderLeftColor: Colors.primary,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -326,51 +315,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#16a34a',
-    marginBottom: 12,
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.bold,
+    color: Colors.primary,
+    marginBottom: Spacing[3],
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
+    gap: Spacing[2],
+    marginTop: Spacing[3],
   },
   manualButton: {
     flex: 1,
-    backgroundColor: '#f59e0b',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    backgroundColor: Colors.warning,
+    borderRadius: BorderRadius.sm,
+    paddingVertical: Spacing[5],
+    paddingHorizontal: Spacing[3],
     alignItems: 'center',
   },
   deleteButton: {
-    backgroundColor: '#ef4444',
+    backgroundColor: Colors.error,
   },
   manualButtonText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
+    color: Colors.white,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold,
   },
   deleteButtonText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
+    color: Colors.white,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold,
   },
   comparisonNote: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 8,
+    fontSize: Typography.sizes.xs,
+    color: Colors.gray500,
+    marginBottom: Spacing[2],
     fontStyle: 'italic',
   },
   infoText: {
-    fontSize: 15,
-    color: '#374151',
-    marginBottom: 4,
+    fontSize: Typography.sizes.base,
+    color: Colors.gray700,
+    marginBottom: Spacing[1],
   },
   infoLabel: {
-    fontWeight: '600',
-    color: '#1f2937',
+    fontWeight: Typography.weights.semibold,
+    color: Colors.gray800,
   },
   vigourGrid: {
     flexDirection: 'row',
@@ -378,49 +367,49 @@ const styles = StyleSheet.create({
   },
   vigourCard: {
     alignItems: 'center',
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: '#f3f4f6',
+    padding: Spacing[5],
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.gray100,
     flex: 1,
-    marginHorizontal: 4,
+    marginHorizontal: Spacing[2],
   },
   sviCard: {
-    backgroundColor: '#fffbeb',
+    backgroundColor: Colors.accentBg,
   },
   vigourLabel: {
-    fontSize: 12,
-    color: '#4b5563',
-    fontWeight: '600',
+    fontSize: Typography.sizes.xs,
+    color: Colors.gray600,
+    fontWeight: Typography.weights.semibold,
   },
   sviLabel: {
-    color: '#d97706',
+    color: Colors.warning,
   },
   vigourValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#16a34a',
-    marginTop: 4,
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.bold,
+    color: Colors.primary,
+    marginTop: Spacing[1],
   },
   sviValue: {
-    color: '#f59e0b',
+    color: Colors.warning,
   },
   annotationImage: {
     width: '100%',
     height: 250,
-    borderRadius: 12,
-    backgroundColor: '#f0f0f0',
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.gray100,
     position: 'relative',
   },
   zoomText: {
     textAlign: 'center',
-    marginTop: 8,
-    fontSize: 12,
-    color: '#3b82f6',
-    fontWeight: '600',
+    marginTop: Spacing[2],
+    fontSize: Typography.sizes.xs,
+    color: Colors.info,
+    fontWeight: Typography.weights.semibold,
   },
   zoomOverlay: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: Colors.black,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -433,7 +422,7 @@ const styles = StyleSheet.create({
     top: 50,
     right: 20,
     backgroundColor: 'rgba(255,255,255,0.8)',
-    borderRadius: 15,
+    borderRadius: BorderRadius.lg,
     width: 30,
     height: 30,
     justifyContent: 'center',
@@ -441,126 +430,122 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   zoomCloseText: {
-    color: '#000',
+    color: Colors.black,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: Typography.weights.bold,
   },
   zoomIndicatorOverlay: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
+    bottom: Spacing[2],
+    right: Spacing[2],
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: Spacing[5],
+    paddingVertical: Spacing[1],
+    borderRadius: BorderRadius.lg,
   },
   zoomIndicatorIcon: {
     fontSize: 14,
-    marginRight: 4,
+    marginRight: Spacing[1],
   },
   zoomIndicatorText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
+    color: Colors.white,
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.semibold,
   },
 });
 
 // Styles copied from App.tsx for the table
 const tableStyles = StyleSheet.create({
   tableContainer: {
-    borderRadius: 14,
+    borderRadius: BorderRadius.lg,
     overflow: 'hidden',
-    backgroundColor: '#f3f4f6',
-    marginBottom: 16,
+    backgroundColor: Colors.gray100,
+    marginBottom: Spacing[8],
     borderWidth: 2,
-    borderColor: '#dcfce7',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: Colors.primaryLight,
+    ...Shadows.sm,
   },
   tableRow: {
     flexDirection: 'row',
-    paddingHorizontal: 10,
+    paddingHorizontal: Spacing[5],
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: Colors.gray200,
   },
   tableHeaderRow: {
-    backgroundColor: '#16a34a',
+    backgroundColor: Colors.primary,
     borderBottomWidth: 2,
-    borderBottomColor: '#15803d',
+    borderBottomColor: Colors.primaryDark,
   },
   tableRowAlt: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: Colors.gray50,
   },
   tableCell: {
-    fontSize: 13,
-    color: '#374151',
-    fontWeight: '500',
-    paddingVertical: 14,
+    fontSize: Typography.sizes.sm,
+    color: Colors.gray700,
+    fontWeight: Typography.weights.medium,
+    paddingVertical: Spacing[7],
   },
   tableCellBold: {
-    fontWeight: '700',
-    color: '#1f2937',
+    fontWeight: Typography.weights.bold,
+    color: Colors.gray800,
   },
   tableCellRoot: {
-    color: '#16a34a',
-    fontWeight: '600',
+    color: Colors.primary,
+    fontWeight: Typography.weights.semibold,
   },
   tableCellShoot: {
-    color: '#3b82f6',
-    fontWeight: '600',
+    color: Colors.info,
+    fontWeight: Typography.weights.semibold,
   },
   tableCellTotal: {
-    color: '#8b5cf6',
-    fontWeight: '700',
+    color: Colors.purple,
+    fontWeight: Typography.weights.bold,
   },
   tableHeader: {
-    color: '#ffffff',
-    fontWeight: '800',
-    paddingVertical: 12,
+    color: Colors.white,
+    fontWeight: Typography.weights.extrabold,
+    paddingVertical: Spacing[3],
   },
   tableHeaderRowManual: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: Colors.purple,
     borderBottomWidth: 2,
-    borderBottomColor: '#6d28d9',
+    borderBottomColor: Colors.purpleDark,
   },
   tableHeaderManual: {
-    color: '#ffffff',
-    fontWeight: '800',
-    paddingVertical: 12,
+    color: Colors.white,
+    fontWeight: Typography.weights.extrabold,
+    paddingVertical: Spacing[3],
   },
   tableCellRootManual: {
-    color: '#7c3aed',
-    fontWeight: '600',
+    color: Colors.purple,
+    fontWeight: Typography.weights.semibold,
   },
   tableCellShootManual: {
-    color: '#0891b2',
-    fontWeight: '600',
+    color: Colors.info,
+    fontWeight: Typography.weights.semibold,
   },
   tableCellTotalManual: {
-    color: '#d946ef',
-    fontWeight: '700',
+    color: Colors.purple,
+    fontWeight: Typography.weights.bold,
   },
   aiRow: {
-    backgroundColor: '#f0fdf4',
+    backgroundColor: Colors.primaryBg,
   },
   manualRow: {
-    backgroundColor: '#f3e8ff',
+    backgroundColor: Colors.purpleLight,
   },
   manualDividerRow: {
-    backgroundColor: '#7c3aed',
-    paddingVertical: 4,
+    backgroundColor: Colors.purple,
+    paddingVertical: Spacing[2],
     justifyContent: 'center',
     alignItems: 'center',
   },
   manualDividerText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 11,
+    color: Colors.white,
+    fontWeight: Typography.weights.bold,
+    fontSize: Typography.sizes.xs,
     letterSpacing: 0.5,
   },
 });

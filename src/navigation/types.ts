@@ -19,6 +19,10 @@ export type TabParamList = {
 export type RootStackParamList = {
   /** The bottom-tab shell; pass `screen` to land on a specific tab */
   MainTabs: NavigatorScreenParams<TabParamList> | undefined;
+  /** Full-screen development submission modal */
+  SubmitForDevelopment: undefined;
+  /** Development submission detail screen (nested in development stack) */
+  DevelopmentDetail: { submission: any; apiUrl: string };
 };
 
 // ── Convenience prop types for DashboardScreen (now in MainTabs) ──────────────

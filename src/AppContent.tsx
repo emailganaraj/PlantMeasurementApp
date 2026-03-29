@@ -506,6 +506,20 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
             </TouchableOpacity>
           </View>
 
+          {/* How to Use Tips */}
+          {!selectedImage && (
+            <View style={styles.tipsBox}>
+              <Text style={styles.tipsTitle}>📋 How to Use</Text>
+              <Text style={styles.tipText}>1. Place up to 10 seedlings — closely packed but not touching each other</Text>
+              <Text style={styles.tipText}>2. Use a plain, non-shiny, non-textured black cloth as background (no folds)</Text>
+              <Text style={styles.tipText}>3. Place a ₹2 coin (2.4 cm) near the roots / between middle plants for calibration</Text>
+              <Text style={styles.tipText}>4. Capture image → Crop just outside the seedling boundary (don't cut the plant)</Text>
+              <Text style={styles.tipText}>5. Remove background → Reapply black background colour</Text>
+              <Text style={styles.tipText}>6. Fill metadata (name, seeds kept, germinated) → Analyse</Text>
+              <Text style={styles.tipText}>7. After analysis, go to History → Add manual measurements for comparison</Text>
+            </View>
+          )}
+
           {selectedImage && (
             <>
               {/* Image Container with Side Rotation Controls */}
@@ -1117,6 +1131,25 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     marginBottom: Spacing[6],
     letterSpacing: 0.2,
+  },
+  tipsBox: {
+    backgroundColor: Colors.primaryLight,
+    borderRadius: BorderRadius.md,
+    padding: Spacing[5],
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.primary,
+  },
+  tipsTitle: {
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.primaryDark,
+    marginBottom: Spacing[2],
+  },
+  tipText: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.gray700,
+    lineHeight: 15,
+    marginBottom: Spacing[1],
   },
   buttonRow: {
     flexDirection: 'row',

@@ -21,11 +21,14 @@ import AppContent from './AppContent';
 import AnalysisHistoryScreen from './screens/AnalysisHistoryScreen';
 import AnalysisDetailScreen from './screens/AnalysisDetailScreen';
 import DashboardScreen from './screens/DashboardScreen';
+import SubmitForDevelopmentScreen from './screens/SubmitForDevelopmentScreen';
+import DevelopmentDetailScreen from './screens/DevelopmentDetailScreen';
 import type { RootStackParamList, TabParamList } from './navigation/types';
 
-const Tab       = createBottomTabNavigator<TabParamList>();
-const RootStack = createStackNavigator<RootStackParamList>();
-const HistoryNav = createStackNavigator();
+const Tab              = createBottomTabNavigator<TabParamList>();
+const RootStack        = createStackNavigator<RootStackParamList>();
+const HistoryNav       = createStackNavigator();
+const DevelopmentNav   = createStackNavigator();
 
 interface AppTabsProps {
   userId: string;
@@ -55,6 +58,31 @@ const HistoryStack = React.memo(({ userId, apiUrl }: AppTabsProps) => (
   </HistoryNav.Navigator>
 ));
 
+// ── Development Submission stack ─────────────────────────────────────────────
+const DevelopmentStack = React.memo(({ userId, apiUrl }: AppTabsProps) => (
+  <DevelopmentNav.Navigator
+    screenOptions={{
+      headerStyle: { backgroundColor: '#f3e8ff' },
+      headerTintColor: '#8b5cf6',
+      headerTitleStyle: { fontWeight: 'bold' },
+    }}
+  >
+    <DevelopmentNav.Screen
+      name="DevelopmentMain"
+      options={{ title: 'Submit for Development', headerShown: false }}
+    >
+      {props => (
+        <SubmitForDevelopmentScreen {...props} userId={userId} apiUrl={apiUrl} />
+      )}
+    </DevelopmentNav.Screen>
+    <DevelopmentNav.Screen
+      name="DevelopmentDetail"
+      component={DevelopmentDetailScreen}
+      options={{ title: 'Submission Details' }}
+    />
+  </DevelopmentNav.Navigator>
+));
+
 // ── Main bottom-tab navigator (owns historyKey state) ────────────────────────
 const MainTabsNavigator = React.memo(({ userId, username = '', apiUrl }: AppTabsProps) => {
   const [historyKey, setHistoryKey] = useState(0);
@@ -71,24 +99,26 @@ const MainTabsNavigator = React.memo(({ userId, username = '', apiUrl }: AppTabs
       {/* Dashboard tab */}
       <Tab.Screen
         name="Dashboard"
-        component={() => (
-          <DashboardScreen userId={userId} username={username} apiUrl={apiUrl} />
-        )}
         options={{
           tabBarLabel: 'Dashboard',
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🏠</Text>,
         }}
-      />
+      >
+        {() => (
+          <DashboardScreen userId={userId} username={username} apiUrl={apiUrl} />
+        )}
+      </Tab.Screen>
 
       {/* New Analysis tab */}
       <Tab.Screen
         name="New Analysis"
-        component={() => <AppContent userId={userId} apiUrl={apiUrl} />}
         options={{
           tabBarLabel: 'New Analysis',
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🔬</Text>,
         }}
-      />
+      >
+        {() => <AppContent userId={userId} apiUrl={apiUrl} />}
+      </Tab.Screen>
 
       {/* History tab */}
       <Tab.Screen
@@ -138,6 +168,18 @@ export const AppWithNavigationTabs: React.FC<AppTabsProps> = ({
         options={{ animationEnabled: false }}
       >
         {() => <MainTabsNavigator userId={userId} username={username} apiUrl={apiUrl} />}
+      </RootStack.Screen>
+
+      {/* Development submission full-screen modal */}
+      <RootStack.Screen
+        name="SubmitForDevelopment"
+        options={{
+          animationEnabled: true,
+          cardStyle: { backgroundColor: 'transparent' },
+          cardOverlayEnabled: true,
+        }}
+      >
+        {() => <DevelopmentStack userId={userId} apiUrl={apiUrl} />}
       </RootStack.Screen>
     </RootStack.Navigator>
   </NavigationContainer>

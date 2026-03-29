@@ -10,6 +10,13 @@
         <domain includeSubdomains="true">localhost</domain>
         <domain includeSubdomains="true">127.0.0.1</domain>
         <domain includeSubdomains="true">192.168</domain>
+        <domain includeSubdomains="true">10.64.56.32</domain>
+              <domain includeSubdomains="true">172.20.10.2</domain>
+ <domain includeSubdomains="true">172.26.243.32</domain>
+  <domain includeSubdomains="true">10.115.141.32</domain>
+
+              
+        
         <!-- Production API -->
         <domain includeSubdomains="true">yuvasankalpa.in</domain>
     </domain-config>

@@ -27,12 +27,14 @@ interface AnalysisMetadataModalProps {
   visible: boolean;
   onSubmit: (metadata: AnalysisMetadata) => void;
   onCancel: () => void;
+  buttonLabel?: string;
 }
 
 export const AnalysisMetadataModal: React.FC<AnalysisMetadataModalProps> = ({
   visible,
   onSubmit,
   onCancel,
+  buttonLabel = 'Analyze',
 }) => {
   const [name, setName] = useState('');
   const [totalSeedsKept, setTotalSeedsKept] = useState('');
@@ -155,7 +157,7 @@ export const AnalysisMetadataModal: React.FC<AnalysisMetadataModalProps> = ({
                 style={[styles.button, styles.submitButton]}
                 onPress={handleSubmit}
               >
-                <Text style={styles.submitButtonText}>Analyze</Text>
+                <Text style={styles.submitButtonText}>{buttonLabel}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -256,15 +258,19 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     color: '#374151',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
+    flexShrink: 1,
+    textAlign: 'center',
   },
   submitButton: {
     backgroundColor: '#16a34a',
   },
   submitButtonText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
+    flexShrink: 1,
+    textAlign: 'center',
   },
 });

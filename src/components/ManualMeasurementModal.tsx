@@ -20,7 +20,6 @@ import {
   ActivityIndicator,
   Alert,
   SafeAreaView,
-  Picker,
 } from 'react-native';
 
 interface ManualMeasurement {
@@ -40,19 +39,29 @@ interface PreviousMeasurement {
 
 interface ManualMeasurementModalProps {
   visible: boolean;
-  onClose: () => void;
-  analysis: any;
+  onClose?: () => void;
+  onCancel?: () => void;
+  analysis?: any;
+  analysisId?: string;
+  userId?: string;
   apiUrl: string;
-  onMeasurementSubmitted: (measurements: any) => void;
+  endpoint?: string;
+  onMeasurementSubmitted?: (measurements: any) => void;
+  onSubmit?: (measurements: any) => void;
 }
 
 const ManualMeasurementModal: React.FC<ManualMeasurementModalProps> = ({
   visible,
   onClose,
+  onCancel,
   analysis,
   apiUrl,
+  endpoint = '/manual-measurements',
   onMeasurementSubmitted,
+  onSubmit,
 }) => {
+  // Handle both old (onClose, onMeasurementSubmitted) and new (onCancel, onSubmit) props
+  const handleClose = onCancel || onClose;
   const [step, setStep] = useState<'choice' | 'count' | 'input' | 'loading'>('choice');
   const [plantCount, setPlantCount] = useState('');
   const [measurements, setMeasurements] = useState<ManualMeasurement[]>([]);
@@ -72,6 +81,7 @@ const ManualMeasurementModal: React.FC<ManualMeasurementModalProps> = ({
     if (visible) {
       loadPreviousMeasurements();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, analysis?.user_id, apiUrl]);
 
   const loadPreviousMeasurements = async () => {
@@ -157,8 +167,8 @@ const ManualMeasurementModal: React.FC<ManualMeasurementModalProps> = ({
       setStep('choice');
       setFlowType(null);
       setSelectedPrevious(null);
-      onClose();
-      onMeasurementSubmitted(JSON.parse(responseText));
+      handleClose?.();
+      (onMeasurementSubmitted || onSubmit)?.(JSON.parse(responseText));
     } catch (error: any) {
       console.error('Error:', error);
       Alert.alert('Error', `Failed to submit: ${error.message}`);
@@ -235,8 +245,8 @@ const ManualMeasurementModal: React.FC<ManualMeasurementModalProps> = ({
       }));
 
       const payload = {
-        analysis_id: analysisId,
-        user_id: userId,
+        analysis_id: analysisId || analysis?.id,
+        user_id: userId || analysis?.user_id || 'user',
         timestamp: new Date().toISOString(),
         measurements: roundedMeasurements,
         germination_percentage: analysis?.germination_percentage || 0,
@@ -244,8 +254,9 @@ const ManualMeasurementModal: React.FC<ManualMeasurementModalProps> = ({
 
       console.log('Submitting manual measurements:', payload);
 
-      // Submit to backend
-      const response = await fetch(`${apiUrl}/manual-measurements`, {
+      // Submit to backend - use provided endpoint or default to /manual-measurements
+      const submitEndpoint = endpoint || '/manual-measurements';
+      const response = await fetch(`${apiUrl}${submitEndpoint}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -274,12 +285,12 @@ const ManualMeasurementModal: React.FC<ManualMeasurementModalProps> = ({
       // Reset and close
       setStep('count');
       setPlantCount('');
-      setSelectedPrevious('');
+      setSelectedPrevious(null);
       setMeasurements([]);
-      onClose();
+      handleClose?.();
 
       // Notify parent
-      onMeasurementSubmitted(result);
+      (onMeasurementSubmitted || onSubmit)?.(result);
     } catch (error: any) {
       console.error('Error:', error);
       Alert.alert('Error', `Failed to submit: ${error.message}`);
@@ -291,10 +302,10 @@ const ManualMeasurementModal: React.FC<ManualMeasurementModalProps> = ({
   return (
     <Modal visible={visible} animationType="slide" transparent={false}>
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose}>
-            <Text style={styles.closeButton}>✕</Text>
-          </TouchableOpacity>
+         <View style={styles.header}>
+           <TouchableOpacity onPress={handleClose}>
+             <Text style={styles.closeButton}>✕</Text>
+           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
             <View style={styles.headerTitleRow}>
               <Text style={styles.headerTitle}>Manual Measurement</Text>

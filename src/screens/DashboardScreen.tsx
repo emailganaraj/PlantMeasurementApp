@@ -162,12 +162,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const goToHistory = () =>
     navigation.navigate('History' as any);
 
-  const handleSubmitForDevelopment = () =>
-    Alert.alert(
-      '🚀 Coming Soon',
-      'Submit For Development will be available in a future update.\nStay tuned!',
-      [{ text: 'Got it', style: 'default' }],
-    );
+  const goToSubmitForDevelopment = () =>
+    navigation.navigate('SubmitForDevelopment' as any);
 
   // ── Render ────────────────────────────────────────────────────────────────
   const screenWidth = Dimensions.get('window').width;
@@ -233,8 +229,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
             title="Submit For Development"
             subtitle="Contribute analysis data to improve the AI model"
             color="orange"
-            onPress={handleSubmitForDevelopment}
-            badge="Coming Soon"
+            onPress={goToSubmitForDevelopment}
             entryDelay={300}
           />
         </View>

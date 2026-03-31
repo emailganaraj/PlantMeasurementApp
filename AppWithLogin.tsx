@@ -28,7 +28,7 @@ import { Colors, Typography, Spacing, BorderRadius, Shadows } from './src/theme'
 
 // LoginScreen Component
 interface LoginScreenProps {
-    onLoginSuccess: (userId: string) => void;
+    onLoginSuccess: (userId: string, username: string) => void;
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
@@ -271,12 +271,14 @@ function App(): React.JSX.Element {
         const checkSession = async () => {
             try {
                 const storedUserId = await AsyncStorage.getItem('user_id');
+                const storedUsername = await AsyncStorage.getItem('username');
                 const isLoggedInStored = await AsyncStorage.getItem('is_logged_in');
                 
                 if (storedUserId && isLoggedInStored === 'true') {
                     setUserId(storedUserId);
+                    setUsername(storedUsername || '');
                     setIsLoggedIn(true);
-                    console.log('Session restored, user_id:', storedUserId);
+                    console.log('Session restored, user_id:', storedUserId, 'username:', storedUsername);
                 } else {
                     setIsLoggedIn(false);
                 }

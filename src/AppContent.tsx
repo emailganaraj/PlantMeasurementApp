@@ -66,6 +66,7 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
   const [zoomModalVisible, setZoomModalVisible] = useState(false);
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
   const [zoomScale, setZoomScale] = useState(1);
+  const [showTips, setShowTips] = useState(true);
   const [imageRotation, setImageRotation] = useState(0);
   const [bgRemovalState, setBgRemovalState] = useState<BackgroundRemovalState>({
     isRemoving: false,
@@ -116,6 +117,11 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
   const handleImageSelected = (imagePath: string) => {
     resetImageState();
     setSelectedImage(imagePath);
+    
+    // Auto-scroll to background removal section after image selection (skip How to Use section)
+    setTimeout(() => {
+      zoomScrollRef.current?.scrollTo({ y: 1200, animated: true });
+    }, 500);
   };
 
   const captureImage = () => {
@@ -162,6 +168,11 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
   const handleCropComplete = (croppedPath: string) => {
     setShowCropModal(false);
     handleImageSelected(croppedPath);
+    
+    // Auto-scroll to background removal section after cropping completes
+    setTimeout(() => {
+      zoomScrollRef.current?.scrollTo({ y: 800, animated: true });
+    }, 500);
   };
 
   const handleCropCancel = () => {
@@ -239,6 +250,11 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
         showColorPalette: true, // Show color palette automatically
         backgroundColor: '#ffffff',
       }));
+
+      // Auto-scroll to background preview after background removal completes
+      setTimeout(() => {
+        zoomScrollRef.current?.scrollTo({ y: 800, animated: true });
+      }, 500);
 
       Alert.alert(
         'Success',
@@ -476,6 +492,7 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
         contentInsetAdjustmentBehavior="automatic"
         style={styles.scrollView}
         showsVerticalScrollIndicator={true}
+        ref={zoomScrollRef}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -507,17 +524,35 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
           </View>
 
           {/* How to Use Tips */}
-          {!selectedImage && (
+          {showTips && (
             <View style={styles.tipsBox}>
-              <Text style={styles.tipsTitle}>📋 How to Use</Text>
+              <View style={styles.tipsHeader}>
+                <Text style={styles.tipsTitle}>📋 How to Use</Text>
+                <TouchableOpacity
+                  style={styles.hideTipsButton}
+                  onPress={() => setShowTips(false)}
+                >
+                  <Text style={styles.hideTipsText}>✕</Text>
+                </TouchableOpacity>
+              </View>
               <Text style={styles.tipText}>1. Place up to 10 seedlings — closely packed but not touching each other</Text>
               <Text style={styles.tipText}>2. Use a plain, non-shiny, non-textured black cloth as background (no folds)</Text>
               <Text style={styles.tipText}>3. Place a ₹2 coin (2.4 cm) near the roots / between middle plants for calibration</Text>
-              <Text style={styles.tipText}>4. Capture image → Crop just outside the seedling boundary (don't cut the plant)</Text>
-              <Text style={styles.tipText}>5. Remove background → Reapply black background colour</Text>
-              <Text style={styles.tipText}>6. Fill metadata (name, seeds kept, germinated) → Analyse</Text>
-              <Text style={styles.tipText}>7. After analysis, go to History → Add manual measurements for comparison</Text>
+              <Text style={styles.tipText}>4. ☀️ Use natural sunlight - avoid flash light/bulb for better image quality</Text>
+              <Text style={styles.tipText}>5. Capture image → Crop just outside the seedling boundary (don't cut the plant)</Text>
+              <Text style={styles.tipText}>6. Remove background → Reapply black background colour</Text>
+              <Text style={styles.tipText}>7. Fill metadata (name, seeds kept, germinated) → Analyse</Text>
+              <Text style={styles.tipText}>8. After analysis, go to History → Add manual measurements for comparison - this is for developmental help to improve accuracy in future versions</Text>
             </View>
+          )}
+
+          {!showTips && (
+            <TouchableOpacity
+              style={styles.showTipsButton}
+              onPress={() => setShowTips(true)}
+            >
+              <Text style={styles.showTipsText}>📋 View Instructions</Text>
+            </TouchableOpacity>
           )}
 
           {selectedImage && (
@@ -1016,29 +1051,6 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
           </>
         )}
 
-        {/* Instructions */}
-        <View style={styles.instructionsSection}>
-          <Text style={styles.instructionsTitle}>📋 How to Use</Text>
-          <Text style={styles.instructionText}>
-            1. Capture or upload a seedling image
-          </Text>
-          <Text style={styles.instructionText}>
-            2. Ensure plants are clearly visible
-          </Text>
-          <Text style={styles.instructionText}>
-            3. Include a 2.4cm coin for calibration
-          </Text>
-          <Text style={styles.instructionText}>
-            4. Tap "Analyze Image" to process
-          </Text>
-          <Text style={styles.instructionText}>
-            5. View measurements in the results table
-          </Text>
-          <Text style={styles.instructionText}>
-            6. Tap "Zoom & Explore" button to open full image
-          </Text>
-        </View>
-
         {/* Footer Spacing */}
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -1150,6 +1162,39 @@ const styles = StyleSheet.create({
     color: Colors.gray700,
     lineHeight: 15,
     marginBottom: Spacing[1],
+  },
+  tipsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing[3],
+  },
+  hideTipsButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius.full,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  hideTipsText: {
+    color: Colors.white,
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.bold,
+  },
+  showTipsButton: {
+    backgroundColor: Colors.purpleLight,
+    borderRadius: BorderRadius.md,
+    padding: Spacing[3],
+    alignItems: 'center',
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.purple,
+    ...Shadows.xs,
+  },
+  showTipsText: {
+    color: Colors.purpleDark,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.bold,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -1627,7 +1672,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing[4],
-    marginBottom: Spacing[6],
+    marginBottom: Spacing[2],
     justifyContent: 'space-between',
   },
   colorItem: {
@@ -1657,7 +1702,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 300,
     borderRadius: BorderRadius.md,
-    marginTop: Spacing[6],
+    marginTop: Spacing[3],
     overflow: 'hidden',
   },
   zoomIndicatorOverlay: {

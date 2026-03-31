@@ -65,6 +65,7 @@ const DevelopmentCaptureScreen: React.FC<DevelopmentCaptureScreenProps> = ({
   const [showCropModal, setShowCropModal] = useState(false);
   const [cropImagePath, setCropImagePath] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [showTips, setShowTips] = useState(true);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const API_URL = apiUrl;
@@ -95,6 +96,11 @@ const DevelopmentCaptureScreen: React.FC<DevelopmentCaptureScreenProps> = ({
   const handleImageSelected = (imagePath: string) => {
     resetImageState();
     setSelectedImage(imagePath);
+    
+    // Auto-scroll to background removal section after image selection
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 400, animated: true });
+    }, 300);
   };
 
   const captureImage = () => {
@@ -141,6 +147,11 @@ const DevelopmentCaptureScreen: React.FC<DevelopmentCaptureScreenProps> = ({
   const handleCropComplete = (croppedPath: string) => {
     setShowCropModal(false);
     handleImageSelected(croppedPath);
+    
+    // Auto-scroll to background removal section after cropping completes
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 400, animated: true });
+    }, 500);
   };
 
   const handleCropCancel = () => {
@@ -305,6 +316,38 @@ const DevelopmentCaptureScreen: React.FC<DevelopmentCaptureScreenProps> = ({
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
     >
+      {/* How to Use Tips */}
+      {showTips && (
+        <View style={styles.tipsBox}>
+          <View style={styles.tipsHeader}>
+            <Text style={styles.tipsTitle}>📋 How to Use</Text>
+            <TouchableOpacity
+              style={styles.hideTipsButton}
+              onPress={() => setShowTips(false)}
+            >
+              <Text style={styles.hideTipsText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.tipText}>1. Place up to 10 seedlings — closely packed but not touching each other</Text>
+          <Text style={styles.tipText}>2. Use a plain, non-shiny, non-textured black cloth as background (no folds)</Text>
+          <Text style={styles.tipText}>3. Place a ₹2 coin (2.4 cm) near the roots / between middle plants for calibration</Text>
+          <Text style={styles.tipText}>4. ☀️ Use natural sunlight - avoid flash light/bulb for better image quality</Text>
+          <Text style={styles.tipText}>5. Capture image → Crop just outside the seedling boundary (don't cut the plant)</Text>
+          <Text style={styles.tipText}>6. Remove background → Reapply black background colour</Text>
+          <Text style={styles.tipText}>7. Fill metadata (name, seeds kept, germinated) → Submit</Text>
+          <Text style={styles.tipText}>8. After submission, go to History → Add manual measurements for each plant - this is for developmental improvement for attaining higher accuracy in the upcoming versions</Text>
+        </View>
+      )}
+
+      {!showTips && (
+        <TouchableOpacity
+          style={styles.showTipsButton}
+          onPress={() => setShowTips(true)}
+        >
+          <Text style={styles.showTipsText}>📋 View Instructions</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Image Capture Section */}
       {!selectedImage ? (
         <View style={styles.imagePlaceholder}>
@@ -348,20 +391,6 @@ const DevelopmentCaptureScreen: React.FC<DevelopmentCaptureScreenProps> = ({
           style={{ flex: 1 }}
         />
       </View>
-
-      {/* How to Use Tips */}
-      {!selectedImage && (
-        <View style={styles.tipsBox}>
-          <Text style={styles.tipsTitle}>📋 How to Use</Text>
-          <Text style={styles.tipText}>1. Place up to 10 seedlings — closely packed but not touching each other</Text>
-          <Text style={styles.tipText}>2. Use a plain, non-shiny, non-textured black cloth as background (no folds)</Text>
-          <Text style={styles.tipText}>3. Place a ₹2 coin (2.4 cm) near the roots / between middle plants for calibration</Text>
-          <Text style={styles.tipText}>4. Capture image → Crop just outside the seedling boundary (don't cut the plant)</Text>
-          <Text style={styles.tipText}>5. Remove background → Reapply black background colour</Text>
-          <Text style={styles.tipText}>6. Fill metadata (name, seeds kept, germinated) → Submit</Text>
-          <Text style={styles.tipText}>7. After submission, go to History → Add manual measurements for each plant</Text>
-        </View>
-      )}
 
       {/* Background Removal Section */}
       {selectedImage && (
@@ -513,11 +542,11 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: Spacing[6],
-    paddingVertical: Spacing[8],
-    gap: Spacing[8],
+    paddingVertical: Spacing[2],
+    gap: Spacing[3],
   },
   imagePlaceholder: {
-    height: 250,
+    height: 200,
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.lg,
     justifyContent: 'center',
@@ -576,7 +605,7 @@ const styles = StyleSheet.create({
   tipsBox: {
     backgroundColor: Colors.purpleLight,
     borderRadius: BorderRadius.md,
-    padding: Spacing[5],
+    padding: Spacing[3],
     borderLeftWidth: 3,
     borderLeftColor: Colors.purple,
   },
@@ -592,9 +621,42 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     marginBottom: Spacing[1],
   },
+  tipsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing[3],
+  },
+  hideTipsButton: {
+    backgroundColor: Colors.purple,
+    borderRadius: BorderRadius.full,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  hideTipsText: {
+    color: Colors.white,
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.bold,
+  },
+  showTipsButton: {
+    backgroundColor: Colors.purpleLight,
+    borderRadius: BorderRadius.md,
+    padding: Spacing[3],
+    alignItems: 'center',
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.purple,
+    ...Shadows.xs,
+  },
+  showTipsText: {
+    color: Colors.purpleDark,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.bold,
+  },
   buttonRow: {
     flexDirection: 'row',
-    gap: Spacing[4],
+    gap: Spacing[3],
   },
   bgRemovalSection: {
     backgroundColor: Colors.surface,
@@ -611,7 +673,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing[5],
   },
   colorPaletteSection: {
-    marginTop: Spacing[6],
+    marginTop: Spacing[3],
     paddingTop: Spacing[6],
     borderTopWidth: 1,
     borderTopColor: Colors.gray200,

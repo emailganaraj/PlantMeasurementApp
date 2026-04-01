@@ -17,11 +17,12 @@ import {
   Animated,
   Alert,
   Dimensions,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import HeaderBar from '../components/ui/HeaderBar';
 import CardTile from '../components/ui/CardTile';
-import { Colors, Typography, Spacing } from '../theme';
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../theme';
 import type { DashboardNavigationProp } from '../navigation/types';
 
 // ── Falling Seedling Component ────────────────────────────────────────────────
@@ -185,8 +186,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
       </View>
 
       <HeaderBar
-        title="🌱 Plant Measurement Pro"
-        subtitle="AI-Powered Seedling Analysis"
+        title="🌱 ICAR NISST SeedMetrics"
+        subtitle="Bengaluru"
       />
 
       <ScrollView
@@ -236,7 +237,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
         {/* ── Footer ── */}
         <Animated.Text style={[styles.footer, { opacity: greetOpacity }]}>
-          Plant Measurement Pro — AI-Powered Precision Agriculture
+          ICAR-NISST Bengaluru — Seedling Analysis System
+        </Animated.Text>
+        <Animated.Text style={[styles.institutionFooter, { opacity: greetOpacity }]}>
+          Indian Council of Agricultural Research
+          National Institute of Seed Science
         </Animated.Text>
       </ScrollView>
     </View>
@@ -315,6 +320,51 @@ const styles = StyleSheet.create({
     fontWeight:    Typography.weights.medium,
     letterSpacing: Typography.letterSpacing.wide,
     marginTop:     Spacing[4],
+  },
+  
+  // Logo Banner
+  logoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surfaceWarm,
+    marginHorizontal: Spacing[2],
+    marginBottom: Spacing[6],
+    paddingVertical: Spacing[3],
+    paddingHorizontal: Spacing[4],
+    borderRadius: BorderRadius.lg,
+    ...Shadows.sm,
+  },
+  bannerLogo: {
+    width: 80,
+    height: 40,
+  },
+  bannerTextContainer: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: Spacing[2],
+  },
+  bannerTitle: {
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.black,
+    color: Colors.primary,
+    letterSpacing: Typography.letterSpacing.wide,
+    textAlign: 'center',
+  },
+  bannerSubtitle: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.medium,
+    color: Colors.gray600,
+    textAlign: 'center',
+    marginTop: Spacing[1],
+  },
+  institutionFooter: {
+    textAlign: 'center',
+    fontSize: Typography.sizes.xs,
+    color: Colors.gray500,
+    fontWeight: Typography.weights.regular,
+    marginTop: Spacing[2],
+    fontStyle: 'italic',
   },
 });
 

@@ -496,8 +496,8 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>🌱 Plant Measurement Pro</Text>
-          <Text style={styles.subtitle}>AI-Powered Seedling Analysis</Text>
+          <Text style={styles.title}>🌱 ICAR-NISST</Text>
+          <Text style={styles.subtitle}>Bengaluru</Text>
           <TouchableOpacity style={styles.testButton} onPress={testConnection}>
             <Text style={styles.testButtonText}>🔌 Test Connection</Text>
           </TouchableOpacity>

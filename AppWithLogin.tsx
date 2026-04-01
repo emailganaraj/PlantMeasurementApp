@@ -22,6 +22,7 @@ import {
     TextInput,
     Animated,
     Easing,
+    Image,
 } from 'react-native';
 import { AppWithNavigationTabs } from './src/AppWithNavigationTabs';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from './src/theme';
@@ -36,29 +37,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     const [password, setPassword] = useState('');
     const [loggingIn, setLoggingIn] = useState(false);
     const [focusedField, setFocusedField] = useState<'username' | 'password' | null>(null);
-    const pulseAnim = React.useRef(new Animated.Value(0)).current;
-
-    // Animation for plant icon pulse
-    useEffect(() => {
-        const animation = Animated.loop(
-            Animated.sequence([
-                Animated.timing(pulseAnim, {
-                    toValue: 1,
-                    duration: 1500,
-                    easing: Easing.inOut(Easing.sin),
-                    useNativeDriver: true,
-                }),
-                Animated.timing(pulseAnim, {
-                    toValue: 0,
-                    duration: 1500,
-                    easing: Easing.inOut(Easing.sin),
-                    useNativeDriver: true,
-                }),
-            ])
-        );
-        animation.start();
-        return () => animation.stop();
-    }, [pulseAnim]);
 
     const handleLogin = async () => {
         if (!username.trim() || !password.trim()) {
@@ -121,47 +99,42 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         }
     };
 
-    const scaleValue = pulseAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [1, 1.15],
-    });
-
-    const opacityValue = pulseAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0.6, 1],
-    });
-
     return (
         <SafeAreaView style={[loginStyles.container, { backgroundColor: Colors.primaryBg }]}>
             <StatusBar barStyle="dark-content" backgroundColor={Colors.primaryBg} />
             <ScrollView contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
-                {/* Decorative Plant Section */}
+                {/* Decorative Header Section */}
                 <View style={[loginStyles.decorativeHeader, { backgroundColor: Colors.surfaceWarm }]}>
-                    <Animated.Text 
-                        style={[
-                            loginStyles.plantIcon,
-                            {
-                                transform: [{ scale: scaleValue }],
-                                opacity: opacityValue,
-                            }
-                        ]}
-                    >
-                        🌱
-                    </Animated.Text>
                     <View style={loginStyles.accentBar1} />
                     <View style={loginStyles.accentBar2} />
                 </View>
 
-                {/* Header Section */}
+                {/* Header Section with Corner Logos */}
                 <View style={[loginStyles.header, { backgroundColor: Colors.surfaceWarm }]}>
+                    {/* ICAR-NISST Corner Logos */}
+                    <Image 
+                        source={require('./src/assets/image/icar_nisst_logo_left.png')} 
+                        style={loginStyles.cornerLeftLogo}
+                        resizeMode="contain"
+                    />
+                    <Image 
+                        source={require('./src/assets/image/icar_nisst_logo_right.png')} 
+                        style={loginStyles.cornerRightLogo}
+                        resizeMode="contain"
+                    />
+                    
                     <Text style={[loginStyles.title, { color: Colors.primary }]}>
-                        Plant Measurement Pro
+                        ICAR NISST SeedMetrics Pro
                     </Text>
                     <Text style={[loginStyles.subtitle, { color: Colors.accent }]}>
-                        AI-Powered Seedling Analysis
+                        Bengaluru
                     </Text>
                     <Text style={[loginStyles.description, { color: Colors.gray600 }]}>
-                        Analyze and measure your seedlings with advanced AI technology
+                        Seedling Analysis System
+                    </Text>
+                    <Text style={[loginStyles.institutionText, { color: Colors.gray500 }]}>
+                        Indian Council of Agricultural Research
+                        National Institute of Seed Science
                     </Text>
                 </View>
 
@@ -375,11 +348,6 @@ const loginStyles = StyleSheet.create({
         position: 'relative',
         overflow: 'hidden',
     },
-    plantIcon: {
-        fontSize: 80,
-        marginBottom: Spacing[6],
-        textAlign: 'center',
-    },
     accentBar1: {
         position: 'absolute',
         bottom: Spacing[4],
@@ -405,6 +373,21 @@ const loginStyles = StyleSheet.create({
         paddingHorizontal: Spacing[6],
         alignItems: 'center',
         marginBottom: Spacing[8],
+        position: 'relative',
+    },
+    cornerLeftLogo: {
+        position: 'absolute',
+        top: Spacing[2],
+        left: -40,
+        width: 175,
+        height: 88,
+    },
+    cornerRightLogo: {
+        position: 'absolute',
+        top: Spacing[2],
+        right: -40,
+        width: 175,
+        height: 88,
     },
     title: {
         fontSize: Typography.sizes['3xl'],
@@ -427,6 +410,15 @@ const loginStyles = StyleSheet.create({
         textAlign: 'center',
         marginTop: Spacing[2],
         paddingHorizontal: Spacing[4],
+    },
+    institutionText: {
+        fontSize: Typography.sizes.xs,
+        lineHeight: Typography.lineHeights.snug,
+        fontWeight: Typography.weights.regular,
+        textAlign: 'center',
+        marginTop: Spacing[3],
+        paddingHorizontal: Spacing[4],
+        fontStyle: 'italic',
     },
     formContainer: {
         paddingHorizontal: Spacing[4],

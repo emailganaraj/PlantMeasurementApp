@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ViewStyle,
+  Image,
 } from 'react-native';
 import { Colors, Typography, Spacing, Shadows, BorderRadius } from '../../theme';
 
@@ -32,17 +33,13 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
   style,
 }) => (
   <View style={[styles.container, style]}>
-    {/* Left – optional back button */}
+    {/* Left – ICAR-NISST Logo */}
     <View style={styles.side}>
-      {showBackButton && (
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={onBackPress}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
-      )}
+      <Image 
+        source={require('../../assets/image/icar_nisst_logo_left.png')} 
+        style={styles.leftLogo}
+        resizeMode="contain"
+      />
     </View>
 
     {/* Centre – title + subtitle */}
@@ -53,8 +50,14 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
       ) : null}
     </View>
 
-    {/* Right – action slot */}
-    <View style={styles.side}>{rightAction ?? null}</View>
+    {/* Right – ICAR-NISST Logo */}
+    <View style={styles.side}>
+      <Image 
+        source={require('../../assets/image/icar_nisst_logo_right.png')} 
+        style={styles.rightLogo}
+        resizeMode="contain"
+      />
+    </View>
   </View>
 );
 
@@ -72,9 +75,22 @@ const styles = StyleSheet.create({
     ...Shadows.orange,
   },
   side: {
-    width: 44,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  leftLogo: {
+    position: 'absolute',
+    left: -45,
+    width: 140,
+    height: 70,
+  },
+  rightLogo: {
+    position: 'absolute',
+    right: -45,
+    width: 140,
+    height: 70,
   },
   centre: {
     flex: 1,
@@ -82,7 +98,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing[4],
   },
   title: {
-    fontSize: Typography.sizes['2xl'],
+    fontSize: Typography.sizes.xl,
     fontWeight: Typography.weights.black,
     color: Colors.primary,
     letterSpacing: Typography.letterSpacing.wide,

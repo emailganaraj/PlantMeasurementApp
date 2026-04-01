@@ -8,7 +8,7 @@
  * - Displays all metadata correctly.
  * - Includes manual measurement submission and side-by-side comparison.
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -17,16 +17,36 @@ import {
   Image,
   TouchableOpacity,
   Alert,
+  Dimensions,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../theme';
 import ZoomableImageModal from './ZoomableImageModal';
 import ManualMeasurementModal from '../components/ManualMeasurementModal';
+import ChatComponent from '../components/ChatComponent';
 
 const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: any }) => {
   const { analysis, apiUrl } = route.params;
   const [zoomModalVisible, setZoomModalVisible] = React.useState(false);
   const [manualModalVisible, setManualModalVisible] = React.useState(false);
   const [manualMeasurements, setManualMeasurements] = React.useState<any>(null);
+  const [username, setUsername] = useState<string>('');
+
+  // Load username from AsyncStorage
+  useEffect(() => {
+    loadUsername();
+  }, []);
+
+  const loadUsername = async () => {
+    try {
+      const storedUsername = await AsyncStorage.getItem('username');
+      if (storedUsername) {
+        setUsername(storedUsername);
+      }
+    } catch (error) {
+      console.error('Error loading username:', error);
+    }
+  };
 
   // Safely get metadata
   const analysisName = analysis.analysis_name || 'Untitled Analysis';
@@ -139,132 +159,145 @@ const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: a
   console.log('DEBUG - manualPlants:', manualPlants);
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Analysis Info */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Analysis Info</Text>
-        <Text style={styles.infoText}>
-          <Text style={styles.infoLabel}>Name:</Text> {analysisName}
-        </Text>
-        <Text style={styles.infoText}>
-          <Text style={styles.infoLabel}>Date:</Text> {date} at {time}
-        </Text>
-      </View>
-
-      {/* Germination & Vigour */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Germination & Vigour</Text>
-        <View style={styles.vigourGrid}>
-          <View style={styles.vigourCard}>
-            <Text style={styles.vigourLabel}>Seeds Kept</Text>
-            <Text style={styles.vigourValue}>{seedsKept}</Text>
-          </View>
-          <View style={styles.vigourCard}>
-            <Text style={styles.vigourLabel}>Germinated</Text>
-            <Text style={styles.vigourValue}>{seedsGerminated}</Text>
-          </View>
-          <View style={styles.vigourCard}>
-            <Text style={styles.vigourLabel}>Germ. %</Text>
-            <Text style={styles.vigourValue}>
-              {germinationPercentage.toFixed(0)}%
-            </Text>
-          </View>
-          <View style={[styles.vigourCard, styles.sviCard]}>
-            <Text style={[styles.vigourLabel, styles.sviLabel]}>SVI</Text>
-            <Text style={[styles.vigourValue, styles.sviValue]}>
-              {svi.toFixed(0)}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Comprehensive Annotation */}
-      {fullImageUrl && (
+    <View style={styles.mainContainer}>
+      <ScrollView style={styles.scrollViewContainer}>
+        {/* Analysis Info */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Annotated Image</Text>
-          <TouchableOpacity onPress={() => setZoomModalVisible(true)}>
-            <Image
-              source={{ uri: fullImageUrl }}
-              style={styles.annotationImage}
-            />
-            <View style={styles.zoomIndicatorOverlay}>
-              <Text style={styles.zoomIndicatorIcon}>🔍</Text>
-              <Text style={styles.zoomIndicatorText}>Tap to zoom</Text>
-            </View>
-          </TouchableOpacity>
+          <Text style={styles.sectionTitle}>Analysis Info</Text>
+          <Text style={styles.infoText}>
+            <Text style={styles.infoLabel}>Name:</Text> {analysisName}
+          </Text>
+          <Text style={styles.infoText}>
+            <Text style={styles.infoLabel}>Date:</Text> {date} at {time}
+          </Text>
         </View>
-      )}
 
-      {/* Plant-wise Measurements Table - AI & Manual Combined */}
-      {plants.length > 0 && (
+        {/* Germination & Vigour */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Plant-wise Measurements</Text>
-          <Text style={styles.comparisonNote}>AI vs Manual Comparison</Text>
-          
-          <View style={tableStyles.tableContainer}>
-            {/* Headers: AI */}
-            <View style={[tableStyles.tableRow, tableStyles.tableHeaderRow]}>
-              <Text style={[tableStyles.tableCell, tableStyles.tableHeader, { flex: 0.6, fontWeight: '700' }]}>Plant</Text>
-              <Text style={[tableStyles.tableCell, tableStyles.tableHeader, { flex: 1.1 }]}>Root</Text>
-              <Text style={[tableStyles.tableCell, tableStyles.tableHeader, { flex: 1.1 }]}>Shoot</Text>
-              <Text style={[tableStyles.tableCell, tableStyles.tableHeader, { flex: 1.1 }]}>Total</Text>
+          <Text style={styles.sectionTitle}>Germination & Vigour</Text>
+          <View style={styles.vigourGrid}>
+            <View style={styles.vigourCard}>
+              <Text style={styles.vigourLabel}>Seeds Kept</Text>
+              <Text style={styles.vigourValue}>{seedsKept}</Text>
             </View>
-            
-            {/* AI Data Rows */}
-            {plants.map((plant) => (
-              <View key={`ai-${plant.id}`} style={[tableStyles.tableRow, tableStyles.aiRow]}>
-                <Text style={[tableStyles.tableCell, tableStyles.tableCellBold, { flex: 0.6 }]}>P{plant.id}</Text>
-                <Text style={[tableStyles.tableCell, tableStyles.tableCellRoot, { flex: 1.1 }]}>{plant.root_length_cm.toFixed(2)}</Text>
-                <Text style={[tableStyles.tableCell, tableStyles.tableCellShoot, { flex: 1.1 }]}>{plant.shoot_length_cm.toFixed(2)}</Text>
-                <Text style={[tableStyles.tableCell, tableStyles.tableCellTotal, { flex: 1.1 }]}>{plant.total_length_cm.toFixed(2)}</Text>
-              </View>
-            ))}
-            
-            {/* Manual Data Rows (if available) */}
-            {manualPlants.length > 0 && (
-              <>
-                <View style={tableStyles.manualDividerRow}>
-                  <Text style={tableStyles.manualDividerText}>MANUAL</Text>
-                </View>
-                {manualPlants.map((plant) => (
-                  <View key={`manual-${plant.id}`} style={[tableStyles.tableRow, tableStyles.manualRow]}>
-                    <Text style={[tableStyles.tableCell, tableStyles.tableCellBold, { flex: 0.6 }]}>P{plant.id}</Text>
-                    <Text style={[tableStyles.tableCell, tableStyles.tableCellRootManual, { flex: 1.1 }]}>{plant.root_length_cm.toFixed(2)}</Text>
-                    <Text style={[tableStyles.tableCell, tableStyles.tableCellShootManual, { flex: 1.1 }]}>{plant.shoot_length_cm.toFixed(2)}</Text>
-                    <Text style={[tableStyles.tableCell, tableStyles.tableCellTotalManual, { flex: 1.1 }]}>{plant.total_length_cm.toFixed(2)}</Text>
-                  </View>
-                ))}
-              </>
-            )}
-          </View>
-
-          {/* Buttons */}
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.manualButton}
-              onPress={() => setManualModalVisible(true)}
-            >
-              <Text style={styles.manualButtonText}>
-                {manualPlants.length > 0 ? '✎ Update Manual Measurements' : '+ Submit Manual Measurement'}
+            <View style={styles.vigourCard}>
+              <Text style={styles.vigourLabel}>Germinated</Text>
+              <Text style={styles.vigourValue}>{seedsGerminated}</Text>
+            </View>
+            <View style={styles.vigourCard}>
+              <Text style={styles.vigourLabel}>Germ. %</Text>
+              <Text style={styles.vigourValue}>
+                {germinationPercentage.toFixed(0)}%
               </Text>
-            </TouchableOpacity>
-            
-            {manualPlants.length > 0 && (
-              <TouchableOpacity
-                style={[styles.manualButton, styles.deleteButton]}
-                onPress={() => {
-                  Alert.alert('Delete Manual Measurements', 'Are you sure?', [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Delete', style: 'destructive', onPress: deleteManualMeasurements },
-                  ]);
-                }}
-              >
-                <Text style={styles.deleteButtonText}>🗑 Delete</Text>
-              </TouchableOpacity>
-            )}
+            </View>
+            <View style={[styles.vigourCard, styles.sviCard]}>
+              <Text style={[styles.vigourLabel, styles.sviLabel]}>SVI</Text>
+              <Text style={[styles.vigourValue, styles.sviValue]}>
+                {svi.toFixed(0)}
+              </Text>
+            </View>
           </View>
         </View>
-      )}
+
+        {/* Comprehensive Annotation */}
+        {fullImageUrl && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Annotated Image</Text>
+            <TouchableOpacity onPress={() => setZoomModalVisible(true)}>
+              <Image
+                source={{ uri: fullImageUrl }}
+                style={styles.annotationImage}
+              />
+              <View style={styles.zoomIndicatorOverlay}>
+                <Text style={styles.zoomIndicatorIcon}>🔍</Text>
+                <Text style={styles.zoomIndicatorText}>Tap to zoom</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Plant-wise Measurements Table - AI & Manual Combined */}
+        {plants.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Plant-wise Measurements</Text>
+            <Text style={styles.comparisonNote}>AI vs Manual Comparison</Text>
+            
+            <View style={tableStyles.tableContainer}>
+              {/* Headers: AI */}
+              <View style={[tableStyles.tableRow, tableStyles.tableHeaderRow]}>
+                <Text style={[tableStyles.tableCell, tableStyles.tableHeader, { flex: 0.6, fontWeight: '700' }]}>Plant</Text>
+                <Text style={[tableStyles.tableCell, tableStyles.tableHeader, { flex: 1.1 }]}>Root</Text>
+                <Text style={[tableStyles.tableCell, tableStyles.tableHeader, { flex: 1.1 }]}>Shoot</Text>
+                <Text style={[tableStyles.tableCell, tableStyles.tableHeader, { flex: 1.1 }]}>Total</Text>
+              </View>
+              
+              {/* AI Data Rows */}
+              {plants.map((plant: any) => (
+                <View key={`ai-${plant.id}`} style={[tableStyles.tableRow, tableStyles.aiRow]}>
+                  <Text style={[tableStyles.tableCell, tableStyles.tableCellBold, { flex: 0.6 }]}>P{plant.id}</Text>
+                  <Text style={[tableStyles.tableCell, tableStyles.tableCellRoot, { flex: 1.1 }]}>{plant.root_length_cm.toFixed(2)}</Text>
+                  <Text style={[tableStyles.tableCell, tableStyles.tableCellShoot, { flex: 1.1 }]}>{plant.shoot_length_cm.toFixed(2)}</Text>
+                  <Text style={[tableStyles.tableCell, tableStyles.tableCellTotal, { flex: 1.1 }]}>{plant.total_length_cm.toFixed(2)}</Text>
+                </View>
+              ))}
+              
+              {/* Manual Data Rows (if available) */}
+              {manualPlants.length > 0 && (
+                <>
+                  <View style={tableStyles.manualDividerRow}>
+                    <Text style={tableStyles.manualDividerText}>MANUAL</Text>
+                  </View>
+                  {manualPlants.map((plant: any) => (
+                    <View key={`manual-${plant.id}`} style={[tableStyles.tableRow, tableStyles.manualRow]}>
+                      <Text style={[tableStyles.tableCell, tableStyles.tableCellBold, { flex: 0.6 }]}>P{plant.id}</Text>
+                      <Text style={[tableStyles.tableCell, tableStyles.tableCellRootManual, { flex: 1.1 }]}>{plant.root_length_cm.toFixed(2)}</Text>
+                      <Text style={[tableStyles.tableCell, tableStyles.tableCellShootManual, { flex: 1.1 }]}>{plant.shoot_length_cm.toFixed(2)}</Text>
+                      <Text style={[tableStyles.tableCell, tableStyles.tableCellTotalManual, { flex: 1.1 }]}>{plant.total_length_cm.toFixed(2)}</Text>
+                    </View>
+                  ))}
+                </>
+              )}
+            </View>
+
+            {/* Buttons */}
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={styles.manualButton}
+                onPress={() => setManualModalVisible(true)}
+              >
+                <Text style={styles.manualButtonText}>
+                  {manualPlants.length > 0 ? '✎ Update Manual Measurements' : '+ Submit Manual Measurement'}
+                </Text>
+              </TouchableOpacity>
+              
+              {manualPlants.length > 0 && (
+                <TouchableOpacity
+                  style={[styles.manualButton, styles.deleteButton]}
+                  onPress={() => {
+                    Alert.alert('Delete Manual Measurements', 'Are you sure?', [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Delete', style: 'destructive', onPress: deleteManualMeasurements },
+                    ]);
+                  }}
+                >
+                  <Text style={styles.deleteButtonText}>🗑 Delete</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Chat Section */}
+        {username && (
+          <ChatComponent
+            analysisId={analysisId}
+            userId={analysis?.user_id || 'user'}
+            username={username}
+            apiUrl={apiUrl}
+            flow="new_analysis"
+          />
+        )}
+      </ScrollView>
 
       {/* Manual Measurement Modal */}
       <ManualMeasurementModal
@@ -281,11 +314,19 @@ const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: a
         visible={zoomModalVisible}
         onClose={() => setZoomModalVisible(false)}
       />
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  mainContainer: {
+    flex: 1,
+    backgroundColor: Colors.primaryBg,
+  },
+  scrollViewContainer: {
+    flex: 1,
+    padding: Spacing[5],
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.primaryBg,

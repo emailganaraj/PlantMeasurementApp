@@ -7,7 +7,7 @@
  * V28.4 - Modern UI/UX with design system
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -33,7 +33,32 @@ const DevelopmentHistoryScreen: React.FC<DevelopmentHistoryScreenProps> = ({
 }) => {
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chatStatus, setChatStatus] = useState<{[key: string]: boolean}>({});
   const navigation = useNavigation<any>();
+
+  // Check if chat exists for a specific submission
+  const checkChatExists = async (submissionId: string) => {
+    try {
+      const response = await fetch(`${apiUrl}/chat/${submissionId}?user_id=${userId}&flow=development`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.messages && data.messages.length > 0;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking chat status:', error);
+      return false;
+    }
+  };
+
+  // Check chat status for all submissions
+  const checkAllChatStatus = async () => {
+    const status: {[key: string]: boolean} = {};
+    for (const submission of submissions) {
+      status[submission.id] = await checkChatExists(submission.id);
+    }
+    setChatStatus(status);
+  };
 
   const fetchSubmissions = async () => {
     setLoading(true);
@@ -56,6 +81,13 @@ const DevelopmentHistoryScreen: React.FC<DevelopmentHistoryScreenProps> = ({
       fetchSubmissions();
     }, [apiUrl, userId]),
   );
+
+  // Check chat status whenever submissions change
+  useEffect(() => {
+    if (submissions.length > 0) {
+      checkAllChatStatus();
+    }
+  }, [submissions]);
 
   const renderItem = ({
     item,
@@ -107,9 +139,17 @@ const DevelopmentHistoryScreen: React.FC<DevelopmentHistoryScreenProps> = ({
         )}
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
-            <Text style={styles.submissionName} numberOfLines={1}>
-              {submissionName}
-            </Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.submissionName} numberOfLines={1}>
+                {submissionName}
+              </Text>
+              {chatStatus[item.id] && (
+                <View style={styles.chatIndicator}>
+                  <Text style={styles.chatIcon}>💬</Text>
+                  <Text style={styles.chatText}>Chat</Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.runNumber}>#{runNumber}</Text>
           </View>
           <Text style={styles.dateTime}>
@@ -242,11 +282,39 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: Spacing[1],
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   submissionName: {
     fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.bold,
     color: Colors.gray800,
     flex: 1,
+  },
+  chatIndicator: {
+    marginLeft: Spacing[2],
+    backgroundColor: '#25D366', 
+    borderRadius: 16,
+    paddingHorizontal: Spacing[2],
+    paddingVertical: Spacing[1],
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  chatIcon: {
+    fontSize: 14,
+    marginRight: 2,
+  },
+  chatText: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.bold,
+    color: '#FFFFFF',
   },
   runNumber: {
     fontSize: Typography.sizes.sm,

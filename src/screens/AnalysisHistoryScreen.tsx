@@ -6,7 +6,7 @@
  * - Correctly calculates and displays SVI, germination %, and analysis name.
  * - Passes all required data to the detail screen.
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Image } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../theme';
@@ -19,7 +19,32 @@ interface AnalysisHistoryProps {
 const AnalysisHistoryScreen: React.FC<AnalysisHistoryProps> = ({ userId, apiUrl }) => {
     const [analyses, setAnalyses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [chatStatus, setChatStatus] = useState<{[key: string]: boolean}>({});
     const navigation = useNavigation<any>();
+
+    // Check if chat exists for a specific analysis
+    const checkChatExists = async (analysisId: string) => {
+        try {
+            const response = await fetch(`${apiUrl}/chat/${analysisId}?user_id=${userId}&flow=new_analysis`);
+            if (response.ok) {
+                const data = await response.json();
+                return data.messages && data.messages.length > 0;
+            }
+            return false;
+        } catch (error) {
+            console.error('Error checking chat status:', error);
+            return false;
+        }
+    };
+
+    // Check chat status for all analyses
+    const checkAllChatStatus = async () => {
+        const status: {[key: string]: boolean} = {};
+        for (const analysis of analyses) {
+            status[analysis.id] = await checkChatExists(analysis.id);
+        }
+        setChatStatus(status);
+    };
 
     const fetchAnalyses = async () => {
         setLoading(true);
@@ -43,6 +68,13 @@ const AnalysisHistoryScreen: React.FC<AnalysisHistoryProps> = ({ userId, apiUrl 
             fetchAnalyses();
         }, [])
     );
+
+    // Check chat status whenever analyses change
+    useEffect(() => {
+        if (analyses.length > 0) {
+            checkAllChatStatus();
+        }
+    }, [analyses]);
 
     const renderItem = ({ item, index }: { item: any, index: number }) => {
         const analysisName = item.analysis_name || 'Untitled Analysis';
@@ -86,7 +118,15 @@ const AnalysisHistoryScreen: React.FC<AnalysisHistoryProps> = ({ userId, apiUrl 
                 )}
                 <View style={styles.cardContent}>
                     <View style={styles.cardHeader}>
-                        <Text style={styles.analysisName} numberOfLines={1}>{analysisName}</Text>
+                        <View style={styles.titleRow}>
+                            <Text style={styles.analysisName} numberOfLines={1}>{analysisName}</Text>
+                            {chatStatus[item.id] && (
+                                <View style={styles.chatIndicator}>
+                                    <Text style={styles.chatIcon}>💬</Text>
+                                    <Text style={styles.chatText}>Chat</Text>
+                                </View>
+                            )}
+                        </View>
                         <Text style={styles.runNumber}>#{runNumber}</Text>
                     </View>
                     <Text style={styles.dateTime}>{date} at {time}</Text>
@@ -175,11 +215,39 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         marginBottom: Spacing[1],
     },
+    titleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
     analysisName: {
         fontSize: Typography.sizes.lg,
         fontWeight: Typography.weights.bold,
         color: Colors.gray800,
         flex: 1,
+    },
+    chatIndicator: {
+        marginLeft: Spacing[2],
+        backgroundColor: '#25D366', // WhatsApp green color
+        borderRadius: 16,
+        paddingHorizontal: Spacing[2],
+        paddingVertical: Spacing[1],
+        flexDirection: 'row',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+        elevation: 3,
+    },
+    chatIcon: {
+        fontSize: 14,
+        marginRight: 2,
+    },
+    chatText: {
+        fontSize: Typography.sizes.xs,
+        fontWeight: Typography.weights.bold,
+        color: '#FFFFFF',
     },
     runNumber: {
         fontSize: Typography.sizes.sm,

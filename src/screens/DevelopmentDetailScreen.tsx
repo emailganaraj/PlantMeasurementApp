@@ -8,7 +8,7 @@
  * V28.4 - Modern UI/UX with design system
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -19,9 +19,11 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../theme';
 import ZoomableImageModal from './ZoomableImageModal';
 import ManualMeasurementModal from '../components/ManualMeasurementModal';
+import ChatComponent from '../components/ChatComponent';
 
 const DevelopmentDetailScreen = ({
   route,
@@ -34,6 +36,23 @@ const DevelopmentDetailScreen = ({
   const [zoomModalVisible, setZoomModalVisible] = React.useState(false);
   const [manualModalVisible, setManualModalVisible] = React.useState(false);
   const [manualMeasurements, setManualMeasurements] = React.useState<any>(null);
+  const [username, setUsername] = useState<string>('');
+
+  // Load username from AsyncStorage
+  useEffect(() => {
+    loadUsername();
+  }, []);
+
+  const loadUsername = async () => {
+    try {
+      const storedUsername = await AsyncStorage.getItem('username');
+      if (storedUsername) {
+        setUsername(storedUsername);
+      }
+    } catch (error) {
+      console.error('Error loading username:', error);
+    }
+  };
 
   // Safely get metadata
   const submissionName = submission.analysis_name || 'Untitled Submission';
@@ -336,6 +355,17 @@ const DevelopmentDetailScreen = ({
         imageUrl={fullImageUrl}
         onClose={() => setZoomModalVisible(false)}
       />
+
+      {/* Chat Section */}
+      {username && (
+        <ChatComponent
+          analysisId={runNumber}
+          userId={submission?.user_id || 'user'}
+          username={username}
+          apiUrl={apiUrl}
+          flow="development"
+        />
+      )}
       </ScrollView>
 
       {/* Bottom Navigation */}

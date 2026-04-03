@@ -5,7 +5,7 @@
  * Displays messages with user on right, admin on left.
  * Stores chat data in JSON format on backend.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,13 @@ import {
   TouchableOpacity,
   Alert,
   StyleSheet,
+  ScrollView,
+  Modal,
+  StatusBar,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
 } from 'react-native';
 import { Colors, Typography, Spacing, BorderRadius } from '../theme';
 
@@ -29,7 +36,9 @@ interface ChatComponentProps {
   userId: string;
   username: string;
   apiUrl: string;
-  flow: 'new_analysis' | 'development'; // Add flow parameter
+  flow: 'new_analysis' | 'development';
+  visible: boolean;
+  onClose: () => void;
 }
 
 const ChatComponent: React.FC<ChatComponentProps> = ({
@@ -38,15 +47,58 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   username,
   apiUrl,
   flow,
+  visible,
+  onClose,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // Load chat messages on component mount
   useEffect(() => {
     loadChatMessages();
   }, [analysisId, apiUrl, flow]);
+
+  // Scroll to bottom when messages load
+  useEffect(() => {
+    if (messages.length > 0 && scrollViewRef.current) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages]);
+
+  // Scroll to bottom when modal becomes visible
+  useEffect(() => {
+    if (visible && messages.length > 0 && scrollViewRef.current) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 300);
+    }
+  }, [visible, messages]);
+
+  // Keyboard listeners
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+      // Scroll to bottom when keyboard opens
+      setTimeout(() => {
+        if (scrollViewRef.current) {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }
+      }, 100);
+    });
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   const loadChatMessages = async () => {
     try {
@@ -74,43 +126,53 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
 
-    try {
-      const now = new Date();
-      const messageData = {
-        msg_id: Date.now().toString(),
-        user: username,
-        message: newMessage.trim(),
-        date: now.toLocaleDateString(),
-        time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
+    // Step 1: Dismiss keyboard first
+    Keyboard.dismiss();
 
-      const response = await fetch(`${apiUrl}/chat/${analysisId}?user_id=${userId}&flow=${flow}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(messageData),
-      });
+    // Step 2: Wait a bit for keyboard to dismiss, then send
+    setTimeout(async () => {
+      // Store message and clear input
+      const messageToSend = newMessage.trim();
+      setNewMessage(''); // Clear input
 
-      if (response.ok) {
-        setMessages(prev => [...prev, messageData]);
-        setNewMessage('');
-      } else {
+      try {
+        const now = new Date();
+        const messageData = {
+          msg_id: Date.now().toString(),
+          user: username,
+          message: messageToSend,
+          date: now.toLocaleDateString(),
+          time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+
+        const response = await fetch(`${apiUrl}/chat/${analysisId}?user_id=${userId}&flow=${flow}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(messageData),
+        });
+
+        if (response.ok) {
+          setMessages(prev => [...prev, messageData]);
+          // Scroll to bottom after sending
+          setTimeout(() => {
+            if (scrollViewRef.current) {
+              scrollViewRef.current.scrollToEnd({ animated: true });
+            }
+          }, 100);
+        } else {
+          Alert.alert('Error', 'Failed to send message');
+          // Restore message if send failed
+          setNewMessage(messageToSend);
+        }
+      } catch (error) {
+        console.error('Error sending message:', error);
         Alert.alert('Error', 'Failed to send message');
+        // Restore message if send failed
+        setNewMessage(messageToSend);
       }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message');
-    }
-  };
-
-  // Calculate dynamic height based on message count
-  const getChatHeight = () => {
-    const baseHeight = 60; // Minimum height for 1-2 messages
-    const messageHeight = 45; // Height per message
-    
-    if (messages.length <= 2) return baseHeight;
-    return baseHeight + (messages.length - 2) * messageHeight;
+    }, 300); // Wait 300ms for keyboard to dismiss
   };
 
   const renderMessage = (message: ChatMessage, index: number) => {
@@ -156,73 +218,113 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   };
 
   return (
-    <View style={styles.chatSection}>
-      {/* Chat Header */}
-      <View style={styles.chatHeader}>
-        <Text style={styles.chatTitle}>Analysis Discussion</Text>
-        <Text style={styles.chatSubtitle}>Chat with admin about this analysis</Text>
-      </View>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+      <SafeAreaView style={styles.modalContainer}>
+        {/* Chat Header */}
+        <View style={styles.chatHeader}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Text style={styles.closeButtonText}>×</Text>
+          </TouchableOpacity>
+          <Text style={styles.chatTitle}>Analysis Discussion</Text>
+          <Text style={styles.chatSubtitle}>Chat with admin about this analysis</Text>
+        </View>
 
-      {/* Messages Area */}
-      <View style={styles.chatContainer}>
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading messages...</Text>
-          </View>
-        ) : (
-          <View style={[styles.messagesContainer, { minHeight: getChatHeight() }]}>
-            {messages.length === 0 ? (
+        {/* Messages Area */}
+        <View style={styles.messagesWrapper}>
+          <ScrollView 
+            ref={scrollViewRef}
+            style={styles.chatContainer}
+            contentContainerStyle={{ paddingBottom: keyboardVisible ? 250 : 100 }}
+          >
+            {isLoading ? (
               <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>No messages yet. Start a conversation!</Text>
+                <Text style={styles.loadingText}>Loading messages...</Text>
               </View>
             ) : (
-              messages.map((message, index) => renderMessage(message, index))
+              <View style={styles.messagesContainer}>
+                {messages.length === 0 ? (
+                  <View style={styles.loadingContainer}>
+                    <Text style={styles.loadingText}>No messages yet. Start a conversation!</Text>
+                  </View>
+                ) : (
+                  messages.map((message, index) => renderMessage(message, index))
+                )}
+              </View>
             )}
-          </View>
-        )}
-      </View>
-      
-      {/* Input Area - Always at bottom */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.textInput}
-          value={newMessage}
-          onChangeText={setNewMessage}
-          placeholder="Type a message..."
-          placeholderTextColor={Colors.gray500}
-          multiline
-        />
-        <TouchableOpacity
-          style={[styles.sendButton, { opacity: newMessage.trim() ? 1 : 0.5 }]}
-          onPress={sendMessage}
-          disabled={!newMessage.trim()}
-        >
-          <Text style={styles.sendButtonText}>Send</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+          </ScrollView>
+        </View>
+        
+        {/* Input Area - Fixed at bottom */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.textInput}
+            value={newMessage}
+            onChangeText={setNewMessage}
+            placeholder="Type a message..."
+            placeholderTextColor={Colors.gray500}
+            multiline
+            blurOnSubmit={false}
+            returnKeyType="send"
+            onSubmitEditing={() => {
+              if (newMessage.trim()) {
+                sendMessage();
+              }
+            }}
+          />
+          <TouchableOpacity
+            style={[styles.sendButton, { opacity: newMessage.trim() ? 1 : 0.5 }]}
+            onPress={sendMessage}
+            disabled={!newMessage.trim()}
+          >
+            <Text style={styles.sendButtonText}>
+              {keyboardVisible ? '↓' : 'Send'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  chatSection: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    margin: Spacing[3],
-    marginBottom: Spacing[5],
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.gray200,
-  },
-  chatContainer: {
+  modalContainer: {
     flex: 1,
-    backgroundColor: Colors.gray50,
+    backgroundColor: Colors.surface,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  messagesWrapper: {
+    flex: 1,
   },
   chatHeader: {
     backgroundColor: Colors.primary,
     padding: Spacing[3],
     borderBottomWidth: 1,
     borderBottomColor: Colors.primaryDark,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: Spacing[3],
+    right: Spacing[3],
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 20,
+    color: Colors.white,
+    fontWeight: 'bold',
   },
   chatTitle: {
     fontSize: Typography.sizes.base,
@@ -235,9 +337,12 @@ const styles = StyleSheet.create({
     color: Colors.white,
     opacity: 0.8,
   },
+  chatContainer: {
+    flex: 1,
+    backgroundColor: '#ECE5DD', // WhatsApp background
+  },
   messagesContainer: {
     flex: 1,
-    backgroundColor: '#ECE5DD', // WhatsApp light background color
     padding: Spacing[2],
   },
   dateContainer: {
@@ -269,11 +374,11 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing[1],
   },
   userBubble: {
-    backgroundColor: '#DCF8C6', // WhatsApp outgoing message green
+    backgroundColor: '#DCF8C6', // WhatsApp green
     borderBottomRightRadius: 4,
   },
   adminBubble: {
-    backgroundColor: '#FFFFFF', // WhatsApp incoming message white
+    backgroundColor: '#FFFFFF', // WhatsApp white
     borderBottomLeftRadius: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -286,10 +391,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   userMessageText: {
-    color: '#000000', // WhatsApp outgoing text - black
+    color: '#000000',
   },
   adminMessageText: {
-    color: '#000000', // WhatsApp incoming text - black
+    color: '#000000',
   },
   messageTime: {
     fontSize: Typography.sizes.xs,
@@ -301,16 +406,6 @@ const styles = StyleSheet.create({
     color: Colors.gray600,
     fontWeight: Typography.weights.semibold,
     marginLeft: Spacing[2],
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing[4],
-  },
-  emptyStateText: {
-    fontSize: Typography.sizes.sm,
-    color: Colors.gray500,
-    textAlign: 'center',
   },
   loadingContainer: {
     alignItems: 'center',
@@ -327,6 +422,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderTopWidth: 1,
     borderTopColor: Colors.gray200,
+    minHeight: 60,
   },
   textInput: {
     flex: 1,
@@ -336,29 +432,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing[2],
     paddingVertical: Spacing[2],
     marginRight: Spacing[2],
-    maxHeight: 60,
+    maxHeight: 80,
     fontSize: Typography.sizes.sm,
     color: Colors.gray800,
     backgroundColor: Colors.white,
+    minHeight: 40,
   },
   sendButton: {
     backgroundColor: Colors.primary,
     borderRadius: BorderRadius.lg,
-    paddingHorizontal: Spacing[3],
-    paddingVertical: Spacing[2],
+    paddingHorizontal: Spacing[4],
+    paddingVertical: Spacing[3],
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  sendButtonDisabled: {
-    backgroundColor: Colors.gray300,
+    minWidth: 60,
+    minHeight: 50,
   },
   sendButtonText: {
     color: Colors.white,
-    fontSize: Typography.sizes.sm,
+    fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.semibold,
-  },
-  sendButtonTextDisabled: {
-    color: Colors.gray500,
   },
 });
 

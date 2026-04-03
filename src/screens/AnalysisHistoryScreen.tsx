@@ -179,6 +179,7 @@ const AnalysisHistoryScreen: React.FC<AnalysisHistoryProps> = ({ userId, apiUrl 
             refreshControl={
                 <RefreshControl refreshing={loading} onRefresh={fetchAnalyses} colors={[Colors.primary]} />
             }
+            ListFooterComponent={<View style={{ height: Spacing[6] }} />}
         />
     );
 };

@@ -314,9 +314,9 @@ function App(): React.JSX.Element {
 
     // Return main app with header containing user info and logout button + navigation tabs
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#f0fdf4' }}>
-            <StatusBar barStyle="light-content" backgroundColor="#1e293b" />
-            {/* User Header */}
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#f0fdf4' }}>
+                <StatusBar barStyle="light-content" backgroundColor="#1e293b" />
+                {/* User Header */}
             <View style={headerStyles.userHeader}>
                 <View style={headerStyles.userInfo}>
                     <Text style={headerStyles.userLabel}>Welcome,</Text>
@@ -374,27 +374,30 @@ const loginStyles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: Spacing[8],
         position: 'relative',
+        minHeight: 180,
     },
     cornerLeftLogo: {
         position: 'absolute',
         top: Spacing[2],
-        left: -40,
-        width: 175,
-        height: 88,
+        left: Spacing[4],
+        width: 120,
+        height: 60,
     },
     cornerRightLogo: {
         position: 'absolute',
         top: Spacing[2],
-        right: -40,
-        width: 175,
-        height: 88,
+        right: Spacing[4],
+        width: 120,
+        height: 60,
     },
     title: {
-        fontSize: Typography.sizes['3xl'],
+        fontSize: Typography.sizes['2xl'],
         fontWeight: Typography.weights.black,
         marginBottom: Spacing[3],
         letterSpacing: Typography.letterSpacing.tight,
         textAlign: 'center',
+        marginTop: Spacing[20],
+        paddingTop: Spacing[8],
     },
     subtitle: {
         fontSize: Typography.sizes.lg,

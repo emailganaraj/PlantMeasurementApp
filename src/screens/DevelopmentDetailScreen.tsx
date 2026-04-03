@@ -37,6 +37,7 @@ const DevelopmentDetailScreen = ({
   const [manualModalVisible, setManualModalVisible] = React.useState(false);
   const [manualMeasurements, setManualMeasurements] = React.useState<any>(null);
   const [username, setUsername] = useState<string>('');
+  const [chatModalVisible, setChatModalVisible] = useState(false);
 
   // Load username from AsyncStorage
   useEffect(() => {
@@ -358,13 +359,24 @@ const DevelopmentDetailScreen = ({
 
       {/* Chat Section */}
       {username && (
-        <ChatComponent
-          analysisId={runNumber}
-          userId={submission?.user_id || 'user'}
-          username={username}
-          apiUrl={apiUrl}
-          flow="development"
-        />
+        <>
+          <TouchableOpacity
+            style={styles.chatButton}
+            onPress={() => setChatModalVisible(true)}
+          >
+            <Text style={styles.chatButtonText}>💬 Chat with Admin</Text>
+          </TouchableOpacity>
+          
+          <ChatComponent
+            analysisId={runNumber}
+            userId={submission?.user_id || 'user'}
+            username={username}
+            apiUrl={apiUrl}
+            flow="development"
+            visible={chatModalVisible}
+            onClose={() => setChatModalVisible(false)}
+          />
+        </>
       )}
       </ScrollView>
 
@@ -390,6 +402,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.primaryBg,
+    padding: Spacing[4],
+  },
+  chatButton: {
+    backgroundColor: Colors.primary,
+    padding: Spacing[3],
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+    margin: Spacing[3],
+    ...Shadows.md,
+  },
+  chatButtonText: {
+    color: Colors.white,
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.bold,
   },
   section: {
     backgroundColor: Colors.surface,

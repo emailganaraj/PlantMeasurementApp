@@ -31,6 +31,7 @@ const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: a
   const [manualModalVisible, setManualModalVisible] = React.useState(false);
   const [manualMeasurements, setManualMeasurements] = React.useState<any>(null);
   const [username, setUsername] = useState<string>('');
+  const [chatModalVisible, setChatModalVisible] = useState(false);
 
   // Load username from AsyncStorage
   useEffect(() => {
@@ -289,13 +290,24 @@ const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: a
 
         {/* Chat Section */}
         {username && (
-          <ChatComponent
-            analysisId={analysisId}
-            userId={analysis?.user_id || 'user'}
-            username={username}
-            apiUrl={apiUrl}
-            flow="new_analysis"
-          />
+          <>
+            <TouchableOpacity
+              style={styles.chatButton}
+              onPress={() => setChatModalVisible(true)}
+            >
+              <Text style={styles.chatButtonText}>💬 Chat with Admin</Text>
+            </TouchableOpacity>
+            
+            <ChatComponent
+              analysisId={analysisId}
+              userId={analysis?.user_id || 'user'}
+              username={username}
+              apiUrl={apiUrl}
+              flow="new_analysis"
+              visible={chatModalVisible}
+              onClose={() => setChatModalVisible(false)}
+            />
+          </>
         )}
       </ScrollView>
 
@@ -326,6 +338,7 @@ const styles = StyleSheet.create({
   scrollViewContainer: {
     flex: 1,
     padding: Spacing[5],
+    paddingBottom: Spacing[20],
   },
   container: {
     flex: 1,
@@ -382,10 +395,23 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.sm,
     fontWeight: Typography.weights.semibold,
   },
+  chatButton: {
+    backgroundColor: Colors.primary,
+    padding: Spacing[3],
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+    marginBottom: Spacing[10],
+    ...Shadows.md,
+  },
+  chatButtonText: {
+    color: Colors.white,
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.bold,
+  },
   deleteButtonText: {
     color: Colors.white,
     fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.semibold,
+    fontWeight: Typography.weights.bold,
   },
   comparisonNote: {
     fontSize: Typography.sizes.xs,

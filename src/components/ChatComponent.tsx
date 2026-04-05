@@ -26,9 +26,11 @@ import { Colors, Typography, Spacing, BorderRadius } from '../theme';
 interface ChatMessage {
   msg_id: string;
   user: string;
+  sender_type: 'user' | 'admin';
   message: string;
   date: string;
   time: string;
+  status: 'sent' | 'read';
 }
 
 interface ChatComponentProps {
@@ -54,7 +56,9 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [lastMessageCount, setLastMessageCount] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const pollingIntervalRef = useRef<number | null>(null);
 
   // Load chat messages on component mount
   useEffect(() => {
@@ -109,10 +113,13 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
       
       if (response.ok) {
         const data = await response.json();
-        setMessages(data.messages || []);
+        const messageList = data.messages || [];
+        setMessages(messageList);
+        setLastMessageCount(messageList.length);
       } else if (response.status === 404) {
         // No chat file exists yet, start with empty messages
         setMessages([]);
+        setLastMessageCount(0);
       } else {
         console.warn('Failed to load chat messages:', response.status);
       }
@@ -122,6 +129,100 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
       setIsLoading(false);
     }
   };
+
+  // Polling and notification functions
+  const startChatPolling = (onPollComplete?: () => void) => {
+    if (!visible) return;
+    
+    const pollChat = async () => {
+      try {
+        const response = await fetch(
+          `${apiUrl}/chat/${analysisId}?user_id=${userId}&flow=${flow}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          const currentCount = data.messages.length;
+          
+          // Always update messages to reflect status changes from backend
+          const prevMessages = messages || [];
+          const newMessages = data.messages || [];
+          
+          setMessages(data.messages || []);
+          setLastMessageCount(currentCount);
+          
+          // Call the completion callback after first poll loads messages
+          if (onPollComplete) {
+            onPollComplete();
+            onPollComplete = undefined; // Only call once
+          }
+          
+          // Simple debug: Check if any status changed
+          const statusChanged = prevMessages.some((prevMsg) => {
+            const newMsg = newMessages.find((msg: ChatMessage) => msg.msg_id === prevMsg.msg_id);
+            return newMsg && prevMsg.status !== newMsg.status;
+          });
+          
+          if (statusChanged) {
+            console.log('Status changed in chat messages');
+          }
+          
+          // Don't automatically mark messages as read
+          // Only admin should mark user messages as read, and vice versa
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+      }
+    };
+    
+    // Initial poll
+    pollChat();
+    
+    // Set up polling every 3 seconds
+    pollingIntervalRef.current = setInterval(pollChat, 3000);
+  };
+
+  const markMessagesAsRead = async () => {
+    console.log('markMessagesAsRead called:', {
+      analysisId,
+      userId,
+      flow,
+      username
+    });
+    
+    try {
+      const response = await fetch(`${apiUrl}/chat/${analysisId}/read?user_id=${userId}&flow=${flow}&reader_type=user`, {
+        method: 'PUT'
+      });
+      const result = await response.json();
+      console.log('markMessagesAsRead response:', result);
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  };
+
+  const stopChatPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  };
+
+  // Start/stop polling when modal becomes visible/hidden
+  useEffect(() => {
+    if (visible) {
+      startChatPolling(() => {
+        // Mark messages as read after first poll loads messages
+        markMessagesAsRead();
+      });
+    } else {
+      stopChatPolling();
+    }
+    
+    return () => {
+      stopChatPolling();
+    };
+  }, [visible, analysisId, apiUrl, userId, flow, username, startChatPolling, stopChatPolling, markMessagesAsRead]);
 
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
@@ -137,12 +238,14 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
 
       try {
         const now = new Date();
-        const messageData = {
+        const messageData: ChatMessage = {
           msg_id: Date.now().toString(),
           user: username,
+          sender_type: 'user',
           message: messageToSend,
           date: now.toLocaleDateString(),
           time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'sent'
         };
 
         const response = await fetch(`${apiUrl}/chat/${analysisId}?user_id=${userId}&flow=${flow}`, {
@@ -154,7 +257,18 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
         });
 
         if (response.ok) {
-          setMessages(prev => [...prev, messageData]);
+          // New messages from mobile are always 'sent' (not read yet)
+          // They will be marked as 'read' when admin opens the chat in web app
+          const savedMessage: ChatMessage = {
+            msg_id: messageData.msg_id,
+            user: messageData.user,
+            sender_type: messageData.sender_type,
+            message: messageData.message,
+            date: messageData.date,
+            time: messageData.time,
+            status: 'sent' as const
+          };
+          setMessages(prev => [...prev, savedMessage]);
           // Scroll to bottom after sending
           setTimeout(() => {
             if (scrollViewRef.current) {
@@ -176,9 +290,12 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   };
 
   const renderMessage = (message: ChatMessage, index: number) => {
-    const isCurrentUser = message.user === username;
+    const isCurrentUser = message.sender_type === 'user';
     const showDate = index === 0 || 
       messages[index - 1]?.date !== message.date;
+    const status = message.status || 'sent';
+
+    console.log('Message status render:', message.msg_id, 'status:', status, 'sender:', message.sender_type);
 
     return (
       <View key={message.msg_id}>
@@ -208,7 +325,17 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
               {message.message}
             </Text>
           </View>
-          <Text style={styles.messageTime}>{message.time}</Text>
+          <View style={styles.messageStatusRow}>
+            <Text style={styles.messageTime}>{message.time}</Text>
+            {isCurrentUser && (
+              <Text style={[
+                styles.statusIndicator,
+                { color: status === 'read' ? '#007AFF' : '#8696A0' }
+              ]}>
+                ✓✓
+              </Text>
+            )}
+          </View>
           {!isCurrentUser && (
             <Text style={styles.senderName}>{message.user}</Text>
           )}
@@ -400,6 +527,17 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.xs,
     color: Colors.gray500,
     marginHorizontal: Spacing[2],
+  },
+  messageStatusRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  statusIndicator: {
+    fontSize: 12,
+    fontWeight: Typography.weights.bold,
+    marginLeft: Spacing[1],
   },
   senderName: {
     fontSize: Typography.sizes.xs,

@@ -20,9 +20,31 @@ const AnalysisHistoryScreen: React.FC<AnalysisHistoryProps> = ({ userId, apiUrl 
     const [analyses, setAnalyses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [chatStatus, setChatStatus] = useState<{[key: string]: boolean}>({});
+    const [unreadCounts, setUnreadCounts] = useState<{[key: string]: number}>({});
     const navigation = useNavigation<any>();
 
-    // Check if chat exists for a specific analysis
+    // Check unread admin messages for a specific analysis
+    const checkUnreadAdminMessages = async (analysisId: string) => {
+        try {
+            const response = await fetch(`${apiUrl}/chat/${analysisId}?user_id=${userId}&flow=new_analysis`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.messages && data.messages.length > 0) {
+                    // Count unread messages from admin (sender_type === 'admin' and status !== 'read')
+                    const unreadAdminMessages = data.messages.filter((msg: any) => 
+                        msg.sender_type === 'admin' && msg.status !== 'read'
+                    );
+                    return unreadAdminMessages.length;
+                }
+            }
+            return 0;
+        } catch (error) {
+            console.error('Error checking unread messages:', error);
+            return 0;
+        }
+    };
+
+    // Check if chat exists for a specific analysis (backward compatibility)
     const checkChatExists = async (analysisId: string) => {
         try {
             const response = await fetch(`${apiUrl}/chat/${analysisId}?user_id=${userId}&flow=new_analysis`);
@@ -37,13 +59,16 @@ const AnalysisHistoryScreen: React.FC<AnalysisHistoryProps> = ({ userId, apiUrl 
         }
     };
 
-    // Check chat status for all analyses
+    // Check chat status and unread counts for all analyses
     const checkAllChatStatus = async () => {
         const status: {[key: string]: boolean} = {};
+        const unreadCounts: {[key: string]: number} = {};
         for (const analysis of analyses) {
             status[analysis.id] = await checkChatExists(analysis.id);
+            unreadCounts[analysis.id] = await checkUnreadAdminMessages(analysis.id);
         }
         setChatStatus(status);
+        setUnreadCounts(unreadCounts);
     };
 
     const fetchAnalyses = async () => {
@@ -75,6 +100,22 @@ const AnalysisHistoryScreen: React.FC<AnalysisHistoryProps> = ({ userId, apiUrl 
             checkAllChatStatus();
         }
     }, [analyses]);
+
+    // Auto-refresh chat status and unread counts in history list every 4 seconds
+    useEffect(() => {
+        if (analyses.length === 0) return;
+        
+        const pollHistoryChatStatus = async () => {
+            await checkAllChatStatus();
+        };
+
+        // Set up polling every 4 seconds for history list
+        const historyPollInterval = setInterval(pollHistoryChatStatus, 4000);
+        
+        return () => {
+            clearInterval(historyPollInterval);
+        };
+    }, [analyses, apiUrl, userId]);
 
     const renderItem = ({ item, index }: { item: any, index: number }) => {
         const analysisName = item.analysis_name || 'Untitled Analysis';
@@ -121,9 +162,14 @@ const AnalysisHistoryScreen: React.FC<AnalysisHistoryProps> = ({ userId, apiUrl 
                         <View style={styles.titleRow}>
                             <Text style={styles.analysisName} numberOfLines={1}>{analysisName}</Text>
                             {chatStatus[item.id] && (
-                                <View style={styles.chatIndicator}>
+                                <View style={[
+                                    styles.chatIndicator,
+                                    unreadCounts[item.id] > 0 && styles.unreadChatIndicator
+                                ]}>
                                     <Text style={styles.chatIcon}>💬</Text>
-                                    <Text style={styles.chatText}>Chat</Text>
+                                    <Text style={styles.chatText}>
+                                        {unreadCounts[item.id] > 0 ? `${unreadCounts[item.id]} unread` : 'Chat'}
+                                    </Text>
                                 </View>
                             )}
                         </View>
@@ -249,6 +295,15 @@ const styles = StyleSheet.create({
         fontSize: Typography.sizes.xs,
         fontWeight: Typography.weights.bold,
         color: '#FFFFFF',
+    },
+    unreadChatIndicator: {
+        backgroundColor: '#FF6B35', // Orange color for unread messages
+        shadowColor: '#FF6B35',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 4,
+        transform: [{ scale: 1.05 }], // Slightly larger for emphasis
     },
     runNumber: {
         fontSize: Typography.sizes.sm,

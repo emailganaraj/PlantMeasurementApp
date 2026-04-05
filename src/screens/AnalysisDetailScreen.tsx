@@ -32,11 +32,46 @@ const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: a
   const [manualMeasurements, setManualMeasurements] = React.useState<any>(null);
   const [username, setUsername] = useState<string>('');
   const [chatModalVisible, setChatModalVisible] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Load username from AsyncStorage
   useEffect(() => {
     loadUsername();
   }, []);
+
+  // Check unread admin messages for this analysis
+  const checkUnreadAdminMessages = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/chat/${analysis.id}?user_id=${analysis?.user_id || 'user'}&flow=new_analysis`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.messages && data.messages.length > 0) {
+          // Count unread messages from admin (sender_type === 'admin' and status !== 'read')
+          const unreadAdminMessages = data.messages.filter((msg: any) => 
+            msg.sender_type === 'admin' && msg.status !== 'read'
+          );
+          setUnreadCount(unreadAdminMessages.length);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking unread messages:', error);
+    }
+  };
+
+  // Auto-refresh unread count every 4 seconds
+  useEffect(() => {
+    if (!analysis?.id) return;
+    
+    // Initial check
+    checkUnreadAdminMessages();
+    
+    // Set up polling every 4 seconds
+    const pollInterval = setInterval(checkUnreadAdminMessages, 4000);
+    
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, [analysis?.id, apiUrl, analysis?.user_id]);
 
   const loadUsername = async () => {
     try {
@@ -161,6 +196,23 @@ const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: a
 
   return (
     <View style={styles.mainContainer}>
+      {/* Chat with Admin Button at Top */}
+      {username && (
+        <View style={styles.topButtonContainer}>
+          <TouchableOpacity
+            style={[
+              styles.chatButton,
+              unreadCount > 0 && styles.chatButtonUnread
+            ]}
+            onPress={() => setChatModalVisible(true)}
+          >
+            <Text style={styles.chatButtonText}>
+              💬 Chat with Admin {unreadCount > 0 && `(${unreadCount} unread)`}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      
       <ScrollView style={styles.scrollViewContainer}>
         {/* Analysis Info */}
         <View style={styles.section}>
@@ -288,26 +340,17 @@ const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: a
           </View>
         )}
 
-        {/* Chat Section */}
+        {/* Chat Component (Modal) */}
         {username && (
-          <>
-            <TouchableOpacity
-              style={styles.chatButton}
-              onPress={() => setChatModalVisible(true)}
-            >
-              <Text style={styles.chatButtonText}>💬 Chat with Admin</Text>
-            </TouchableOpacity>
-            
-            <ChatComponent
-              analysisId={analysisId}
-              userId={analysis?.user_id || 'user'}
-              username={username}
-              apiUrl={apiUrl}
-              flow="new_analysis"
-              visible={chatModalVisible}
-              onClose={() => setChatModalVisible(false)}
-            />
-          </>
+          <ChatComponent
+            analysisId={analysisId}
+            userId={analysis?.user_id || 'user'}
+            username={username}
+            apiUrl={apiUrl}
+            flow="new_analysis"
+            visible={chatModalVisible}
+            onClose={() => setChatModalVisible(false)}
+          />
         )}
       </ScrollView>
 
@@ -333,6 +376,11 @@ const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: a
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
+    backgroundColor: Colors.primaryBg,
+  },
+  topButtonContainer: {
+    padding: Spacing[4],
+    paddingBottom: Spacing[2],
     backgroundColor: Colors.primaryBg,
   },
   scrollViewContainer: {
@@ -402,6 +450,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing[10],
     ...Shadows.md,
+  },
+  chatButtonUnread: {
+    backgroundColor: '#FF6B35',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 4,
+    transform: [{ scale: 1.02 }],
   },
   chatButtonText: {
     color: Colors.white,

@@ -34,7 +34,29 @@ const DevelopmentHistoryScreen: React.FC<DevelopmentHistoryScreenProps> = ({
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [chatStatus, setChatStatus] = useState<{[key: string]: boolean}>({});
+    const [unreadCounts, setUnreadCounts] = useState<{[key: string]: number}>({});
   const navigation = useNavigation<any>();
+
+  // Check unread admin messages for a specific submission
+    const checkUnreadAdminMessages = async (submissionId: string) => {
+        try {
+            const response = await fetch(`${apiUrl}/chat/${submissionId}?user_id=${userId}&flow=development`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.messages && data.messages.length > 0) {
+                    // Count unread messages from admin (sender_type === 'admin' and status !== 'read')
+                    const unreadAdminMessages = data.messages.filter((msg: any) => 
+                        msg.sender_type === 'admin' && msg.status !== 'read'
+                    );
+                    return unreadAdminMessages.length;
+                }
+            }
+            return 0;
+        } catch (error) {
+            console.error('Error checking unread messages:', error);
+            return 0;
+        }
+    };
 
   // Check if chat exists for a specific submission
   const checkChatExists = async (submissionId: string) => {
@@ -51,13 +73,16 @@ const DevelopmentHistoryScreen: React.FC<DevelopmentHistoryScreenProps> = ({
     }
   };
 
-  // Check chat status for all submissions
+  // Check chat status and unread counts for all submissions
   const checkAllChatStatus = async () => {
     const status: {[key: string]: boolean} = {};
+    const unreadCounts: {[key: string]: number} = {};
     for (const submission of submissions) {
       status[submission.id] = await checkChatExists(submission.id);
+      unreadCounts[submission.id] = await checkUnreadAdminMessages(submission.id);
     }
     setChatStatus(status);
+    setUnreadCounts(unreadCounts);
   };
 
   const fetchSubmissions = async () => {
@@ -144,9 +169,14 @@ const DevelopmentHistoryScreen: React.FC<DevelopmentHistoryScreenProps> = ({
                 {submissionName}
               </Text>
               {chatStatus[item.id] && (
-                <View style={styles.chatIndicator}>
+                <View style={[
+                  styles.chatIndicator,
+                  unreadCounts[item.id] > 0 && styles.unreadChatIndicator
+                ]}>
                   <Text style={styles.chatIcon}>💬</Text>
-                  <Text style={styles.chatText}>Chat</Text>
+                  <Text style={styles.chatText}>
+                    {unreadCounts[item.id] > 0 ? `${unreadCounts[item.id]} unread` : 'Chat'}
+                  </Text>
                 </View>
               )}
             </View>
@@ -315,6 +345,15 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.bold,
     color: '#FFFFFF',
+  },
+  unreadChatIndicator: {
+    backgroundColor: '#FF6B35', // Orange color for unread messages
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+    transform: [{ scale: 1.05 }], // Slightly larger for emphasis
   },
   runNumber: {
     fontSize: Typography.sizes.sm,

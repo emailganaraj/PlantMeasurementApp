@@ -10,6 +10,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Image } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../theme';
+import { formatISTDate, formatISTTime } from '../utils/timeUtils';
 
 interface AnalysisHistoryProps {
     userId: string;
@@ -141,8 +142,8 @@ const AnalysisHistoryScreen: React.FC<AnalysisHistoryProps> = ({ userId, apiUrl 
         }
 
         const runNumber = analyses.length - index;
-        const date = new Date(item.timestamp).toLocaleDateString();
-        const time = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const date = formatISTDate(item.timestamp);
+        const time = formatISTTime(item.timestamp);
 
         const thumbnailUrl = item.comprehensive_annotation || item.debug_images?.comprehensive_annotation;
 

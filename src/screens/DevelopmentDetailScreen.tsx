@@ -24,6 +24,7 @@ import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../theme';
 import ZoomableImageModal from './ZoomableImageModal';
 import ManualMeasurementModal from '../components/ManualMeasurementModal';
 import ChatComponent from '../components/ChatComponent';
+import { formatISTDate, formatISTTime } from '../utils/timeUtils';
 
 const DevelopmentDetailScreen = ({
   route,
@@ -38,6 +39,7 @@ const DevelopmentDetailScreen = ({
   const [manualMeasurements, setManualMeasurements] = React.useState<any>(null);
   const [username, setUsername] = useState<string>('');
   const [chatModalVisible, setChatModalVisible] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Load username from AsyncStorage
   useEffect(() => {
@@ -58,11 +60,8 @@ const DevelopmentDetailScreen = ({
   // Safely get metadata
   const submissionName = submission.analysis_name || 'Untitled Submission';
   const runNumber = submission?.id || 'Unknown';
-  const date = new Date(submission.timestamp).toLocaleDateString();
-  const time = new Date(submission.timestamp).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const date = formatISTDate(submission.timestamp);
+  const time = formatISTTime(submission.timestamp);
 
   // Set header options with submission info
   useEffect(() => {
@@ -76,6 +75,40 @@ const DevelopmentDetailScreen = ({
       ),
     });
   }, [navigation, submissionName, runNumber, date, time]);
+
+  // Check unread admin messages for this development submission
+  const checkUnreadAdminMessages = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/chat/${runNumber}?user_id=${submission?.user_id || 'user'}&flow=development`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.messages && data.messages.length > 0) {
+          // Count unread messages from admin (sender_type === 'admin' and status !== 'read')
+          const unreadAdminMessages = data.messages.filter((msg: any) => 
+            msg.sender_type === 'admin' && msg.status !== 'read'
+          );
+          setUnreadCount(unreadAdminMessages.length);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking unread messages:', error);
+    }
+  };
+
+  // Auto-refresh unread count every 4 seconds
+  useEffect(() => {
+    if (!runNumber) return;
+    
+    // Initial check
+    checkUnreadAdminMessages();
+    
+    // Set up polling every 4 seconds
+    const pollInterval = setInterval(checkUnreadAdminMessages, 4000);
+    
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, [runNumber, apiUrl, submission?.user_id]);
 
   const seedsKept = submission.total_seeds_kept || 0;
   const seedsGerminated = submission.total_seeds_germinated || 0;
@@ -155,6 +188,23 @@ const DevelopmentDetailScreen = ({
 
   return (
     <SafeAreaView style={styles.screenContainer} edges={['left', 'right']}>
+      {/* Chat with Admin Button at Top */}
+      {username && (
+        <View style={styles.topButtonContainer}>
+          <TouchableOpacity
+            style={[
+              styles.chatButton,
+              unreadCount > 0 && styles.chatButtonUnread
+            ]}
+            onPress={() => setChatModalVisible(true)}
+          >
+            <Text style={styles.chatButtonText}>
+              💬 Chat with Admin {unreadCount > 0 && `(${unreadCount} unread)`}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: Spacing[6] }}>
       {/* Submission Info */}
       <View style={styles.section}>
@@ -357,26 +407,17 @@ const DevelopmentDetailScreen = ({
         onClose={() => setZoomModalVisible(false)}
       />
 
-      {/* Chat Section */}
+      {/* Chat Component Modal */}
       {username && (
-        <>
-          <TouchableOpacity
-            style={styles.chatButton}
-            onPress={() => setChatModalVisible(true)}
-          >
-            <Text style={styles.chatButtonText}>💬 Chat with Admin</Text>
-          </TouchableOpacity>
-          
-          <ChatComponent
-            analysisId={runNumber}
-            userId={submission?.user_id || 'user'}
-            username={username}
-            apiUrl={apiUrl}
-            flow="development"
-            visible={chatModalVisible}
-            onClose={() => setChatModalVisible(false)}
-          />
-        </>
+        <ChatComponent
+          analysisId={runNumber}
+          userId={submission?.user_id || 'user'}
+          username={username}
+          apiUrl={apiUrl}
+          flow="development"
+          visible={chatModalVisible}
+          onClose={() => setChatModalVisible(false)}
+        />
       )}
       </ScrollView>
 
@@ -399,6 +440,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.primaryBg,
   },
+  topButtonContainer: {
+    padding: Spacing[4],
+    paddingBottom: Spacing[2],
+    backgroundColor: Colors.primaryBg,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.primaryBg,
@@ -409,8 +455,17 @@ const styles = StyleSheet.create({
     padding: Spacing[3],
     borderRadius: BorderRadius.lg,
     alignItems: 'center',
-    margin: Spacing[3],
+    marginBottom: Spacing[10],
     ...Shadows.md,
+  },
+  chatButtonUnread: {
+    backgroundColor: '#FF6B35',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 4,
+    transform: [{ scale: 1.02 }],
   },
   chatButtonText: {
     color: Colors.white,

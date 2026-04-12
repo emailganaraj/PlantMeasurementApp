@@ -18,6 +18,7 @@ import {
   RefreshControl,
   Image,
 } from 'react-native';
+import { formatISTDate, formatISTTime } from '../utils/timeUtils';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../theme';
@@ -123,11 +124,8 @@ const DevelopmentHistoryScreen: React.FC<DevelopmentHistoryScreenProps> = ({
   }) => {
     const submissionName = item.analysis_name || 'Untitled Submission';
     const runNumber = submissions.length - index;
-    const date = new Date(item.timestamp).toLocaleDateString();
-    const time = new Date(item.timestamp).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const date = formatISTDate(item.timestamp);
+    const time = formatISTTime(item.timestamp);
     const germinationPercentage = item.germination_percentage || 0;
 
     // Manual measurements (if available)

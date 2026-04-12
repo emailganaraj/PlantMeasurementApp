@@ -21,6 +21,7 @@ import {
   Alert,
   SafeAreaView,
 } from 'react-native';
+import { getCurrentISTTimestamp } from '../utils/timeUtils';
 
 interface ManualMeasurement {
   plant_id: number;
@@ -134,7 +135,7 @@ const ManualMeasurementModal: React.FC<ManualMeasurementModalProps> = ({
       const payload = {
         analysis_id: analysisId,
         user_id: userId,
-        timestamp: new Date().toISOString(),
+        timestamp: getCurrentISTTimestamp(),
         measurements: roundedMeasurements,
         germination_percentage: analysis?.germination_percentage || 0,
       };
@@ -204,14 +205,19 @@ const ManualMeasurementModal: React.FC<ManualMeasurementModalProps> = ({
     
     if (value === '') {
       newMeasurements[index][field] = 0;
+    } else if (value === '.' || /^\d+\.$/.test(value) || /^\d+\.\d+$/.test(value)) {
+      // Handle decimal inputs: ".", "5.", "5.5"
+      // Store as string to preserve decimal display, but calculate numeric value for totals
+      const numericValue = parseFloat(value) || 0;
+      newMeasurements[index][field] = numericValue;
+      // Store the original string for display
+      (newMeasurements[index] as any)[`${field}_display`] = value;
     } else {
       const numValue = parseFloat(value);
       if (!isNaN(numValue) && numValue >= 0) {
         newMeasurements[index][field] = numValue;
-      } else if (value === '.' || /^\d+\.$/.test(value)) {
-        // Allow intermediate state like "5."
-        const partial = value.replace(/\.$/, '');
-        newMeasurements[index][field] = partial === '' ? 0 : parseFloat(partial);
+        // Clear display string for valid numbers
+        (newMeasurements[index] as any)[`${field}_display`] = undefined;
       }
     }
     
@@ -247,7 +253,7 @@ const ManualMeasurementModal: React.FC<ManualMeasurementModalProps> = ({
       const payload = {
         analysis_id: analysisId || analysis?.id,
         user_id: userId || analysis?.user_id || 'user',
-        timestamp: new Date().toISOString(),
+        timestamp: getCurrentISTTimestamp(),
         measurements: roundedMeasurements,
         germination_percentage: analysis?.germination_percentage || 0,
       };
@@ -485,7 +491,7 @@ const ManualMeasurementModal: React.FC<ManualMeasurementModalProps> = ({
               </View>
 
               {measurements.map((measurement, idx) => (
-                <View key={measurement.plant_id} style={[styles.tableRow, idx % 2 && styles.tableRowAlt]}>
+                <View key={measurement.plant_id} style={[styles.tableRow, idx % 2 === 1 ? styles.tableRowAlt : undefined]}>
                   <Text style={[styles.tableCell, styles.plantLabel, { flex: 0.6 }]}>
                     P{measurement.plant_id}
                   </Text>
@@ -493,7 +499,10 @@ const ManualMeasurementModal: React.FC<ManualMeasurementModalProps> = ({
                     style={[styles.tableCell, styles.input, { flex: 1.2 }]}
                     placeholder="0.00"
                     keyboardType="decimal-pad"
-                    value={measurement.root_length_cm === 0 ? '' : measurement.root_length_cm.toString()}
+                    value={
+                      (measurement as any).root_length_cm_display || 
+                      (measurement.root_length_cm === 0 ? '' : measurement.root_length_cm.toString())
+                    }
                     onChangeText={(v) =>
                       handleMeasurementChange(idx, 'root_length_cm', v)
                     }
@@ -503,7 +512,10 @@ const ManualMeasurementModal: React.FC<ManualMeasurementModalProps> = ({
                     style={[styles.tableCell, styles.input, { flex: 1.2 }]}
                     placeholder="0.00"
                     keyboardType="decimal-pad"
-                    value={measurement.shoot_length_cm === 0 ? '' : measurement.shoot_length_cm.toString()}
+                    value={
+                      (measurement as any).shoot_length_cm_display || 
+                      (measurement.shoot_length_cm === 0 ? '' : measurement.shoot_length_cm.toString())
+                    }
                     onChangeText={(v) =>
                       handleMeasurementChange(idx, 'shoot_length_cm', v)
                     }

@@ -24,6 +24,7 @@ import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../theme';
 import ZoomableImageModal from './ZoomableImageModal';
 import ManualMeasurementModal from '../components/ManualMeasurementModal';
 import ChatComponent from '../components/ChatComponent';
+import { formatISTDate, formatISTTime } from '../utils/timeUtils';
 
 const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: any }) => {
   const { analysis, apiUrl } = route.params;
@@ -88,11 +89,8 @@ const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: a
   const analysisName = analysis.analysis_name || 'Untitled Analysis';
   const analysisId = analysis?.id || 'Unknown';
   const runNumber = analysisId.match(/\d+$/) ? analysisId.match(/\d+$/)?.[0] : analysisId;
-  const date = new Date(analysis.timestamp).toLocaleDateString();
-  const time = new Date(analysis.timestamp).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const date = formatISTDate(analysis.timestamp);
+  const time = formatISTTime(analysis.timestamp);
   const germinationPercentage = analysis.germination_percentage || 0;
 
   // Set header options with analysis info

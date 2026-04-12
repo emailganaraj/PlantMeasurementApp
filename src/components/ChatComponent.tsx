@@ -22,6 +22,7 @@ import {
   Keyboard,
 } from 'react-native';
 import { Colors, Typography, Spacing, BorderRadius } from '../theme';
+import { getCurrentISTChatTime, formatISTDateTime } from '../utils/timeUtils';
 
 interface ChatMessage {
   msg_id: string;
@@ -237,14 +238,14 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
       setNewMessage(''); // Clear input
 
       try {
-        const now = new Date();
+        const istTime = getCurrentISTChatTime();
         const messageData: ChatMessage = {
           msg_id: Date.now().toString(),
           user: username,
           sender_type: 'user',
           message: messageToSend,
-          date: now.toLocaleDateString(),
-          time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          date: istTime.date,
+          time: istTime.time,
           status: 'sent'
         };
 

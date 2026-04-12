@@ -24,6 +24,7 @@ import HeaderBar from '../components/ui/HeaderBar';
 import CardTile from '../components/ui/CardTile';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../theme';
 import type { DashboardNavigationProp } from '../navigation/types';
+import { toISTDate } from '../utils/timeUtils';
 
 // ── Falling Seedling Component ────────────────────────────────────────────────
 interface FallingSeedlingProps {
@@ -123,7 +124,8 @@ interface DashboardScreenProps {
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 function getGreeting(): string {
-  const h = new Date().getHours();
+  const istTime = toISTDate(new Date());
+  const h = istTime.getHours();
   if (h < 12) return 'Good Morning';
   if (h < 17) return 'Good Afternoon';
   return 'Good Evening';

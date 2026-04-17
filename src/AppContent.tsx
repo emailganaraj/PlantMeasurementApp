@@ -381,7 +381,7 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
       const processedResult = {
         ...result,
         plants: plantsArray,
-        comprehensive_annotation: result.debug_images?.comprehensive_annotation,
+        comprehensive_annotation: result.debug_images?.consolidated_path_visualization,
         background_removed: bgRemovalState.processedImageData ? true : false,
         // Add metadata
         analysis_name: metadata.name,

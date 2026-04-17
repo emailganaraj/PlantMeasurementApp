@@ -23,6 +23,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../theme';
 import ZoomableImageModal from './ZoomableImageModal';
 import ManualMeasurementModal from '../components/ManualMeasurementModal';
+import ManualReprocessingSection from '../components/ManualReprocessingSection';
 import ChatComponent from '../components/ChatComponent';
 import { formatISTDate, formatISTTime } from '../utils/timeUtils';
 
@@ -118,8 +119,8 @@ const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: a
 
   // Fix: Construct full image URL
   const annotationUrl =
-    analysis.comprehensive_annotation ||
-    analysis.debug_images?.comprehensive_annotation;
+    analysis.debug_images?.consolidated_path_visualization ||
+    analysis.comprehensive_annotation;
   const fullImageUrl = annotationUrl ? `${apiUrl}${annotationUrl}` : null;
 
   // Load manual measurements for this analysis
@@ -336,6 +337,17 @@ const AnalysisDetailScreen = ({ route, navigation }: { route: any; navigation: a
               )}
             </View>
           </View>
+        )}
+
+        {/* Manual Reprocessing Section */}
+        {plants.length > 0 && (
+          <ManualReprocessingSection
+            analysisId={analysisId}
+            userId={analysis?.user_id || 'user'}
+            apiUrl={apiUrl}
+            imageUrl={fullImageUrl}
+            plants={plants}
+          />
         )}
 
         {/* Chat Component (Modal) */}

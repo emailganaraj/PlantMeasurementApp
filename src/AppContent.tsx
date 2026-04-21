@@ -43,6 +43,8 @@ interface BackgroundRemovalState {
   showColorPalette: boolean;
   backgroundColor: string;
   processedImageData: string | null;
+  analysisImage: string | null; // Original resolution image for analysis
+  bgRemovalMethod: 'hsv' | 'rembg_u2net' | 'rembg_isnet';
 }
 
 interface AppContentProps {
@@ -73,7 +75,13 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
     showColorPalette: false,
     backgroundColor: '#ffffff',
     processedImageData: null,
+    analysisImage: null, // Original resolution image for analysis
+    bgRemovalMethod: 'hsv', // Default to HSV method
   });
+  const [analysisResolution, setAnalysisResolution] = useState<'resize' | 'original'>('original'); // Default to original for best quality
+  const [hsvResolution, setHsvResolution] = useState<'resize' | 'original'>('original'); // HSV default to original
+  const [aiFastResolution, setAiFastResolution] = useState<'resize' | 'original'>('original'); // AI Fast default to original
+  const [aiBestResolution, setAiBestResolution] = useState<'resize' | 'original'>('original'); // AI Best default to original
   const [bgRemovalOriginalImage, setBgRemovalOriginalImage] = useState<
     string | null
   >(null);
@@ -109,9 +117,15 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
       showColorPalette: false,
       backgroundColor: '#ffffff',
       processedImageData: null,
+      analysisImage: null,
+      bgRemovalMethod: 'hsv',
     });
     setBgRemovalOriginalImage(null);
     setAnalysisResult(null);
+    setAnalysisResolution('original'); // Reset to default
+    setHsvResolution('original'); // Reset HSV to original
+    setAiFastResolution('original'); // Reset AI Fast to original
+    setAiBestResolution('original'); // Reset AI Best to original
   };
 
   const handleImageSelected = (imagePath: string) => {
@@ -218,6 +232,15 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
       // Add user_id to request
       formData.append('user_id', userId);
 
+      // Add resolution preference for background removal
+      if (bgRemovalState.bgRemovalMethod === 'hsv') {
+        formData.append('resolution', hsvResolution);
+      } else if (bgRemovalState.bgRemovalMethod === 'rembg_u2net') {
+        formData.append('resolution', aiFastResolution);
+      } else if (bgRemovalState.bgRemovalMethod === 'rembg_isnet') {
+        formData.append('resolution', aiBestResolution);
+      }
+
       console.log(`Fetching ${API_URL}/remove-background`);
       const response = await fetch(`${API_URL}/remove-background`, {
         method: 'POST',
@@ -240,13 +263,18 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
         'Remove background result received, image_data length:',
         result.image_data?.length,
       );
+      console.log(
+        'Analysis image data length:',
+        result.analysis_image_data?.length,
+      );
 
       // Store original image for re-processing with different colors
       setBgRemovalOriginalImage(selectedImage);
 
       setBgRemovalState(prev => ({
         ...prev,
-        processedImageData: result.image_data,
+        processedImageData: result.image_data, // Preview image (resized)
+        analysisImage: result.analysis_image_data, // Analysis image (original resolution)
         showColorPalette: true, // Show color palette automatically
         backgroundColor: '#ffffff',
       }));
@@ -265,6 +293,114 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
       console.error('Background removal error:', errorMessage);
       console.error('Full error:', error);
       Alert.alert('Error', `Failed to remove background: ${errorMessage}`);
+    } finally {
+      setBgRemovalState(prev => ({ ...prev, isRemoving: false }));
+    }
+  };
+
+  const removeBackgroundRembg = async (method: 'rembg_u2net' | 'rembg_isnet' = 'rembg_u2net') => {
+    if (!selectedImage && !bgRemovalState.processedImageData) {
+      Alert.alert('Error', 'Please select an image first');
+      return;
+    }
+
+    setBgRemovalState(prev => ({ ...prev, isRemoving: true }));
+    try {
+      console.log('Starting rembg background removal with optimized config...');
+      const formData = new FormData();
+      formData.append('file', {
+        uri: selectedImage,
+        type: 'image/jpeg',
+        name: 'plant_image.jpg',
+      } as any);
+
+      // Send rotation and background color
+      if (imageRotation !== 0) {
+        formData.append('rotation', imageRotation.toString());
+      }
+
+      // Keep # prefix for valid hex format
+      formData.append('background_color', bgRemovalState.backgroundColor);
+
+      // Add user_id to request
+      formData.append('user_id', userId);
+
+      // Use the method passed as parameter
+      if (method === 'rembg_isnet') {
+        // AI Best (ISNet) configuration
+        formData.append('model', 'isnet-general-use');
+        formData.append('alpha_matting', false);  // Ensure boolean false
+        formData.append('fg_threshold', '220');
+        formData.append('bg_threshold', '15');
+        formData.append('erode_size', '11');
+        console.log(`Fetching ${API_URL}/remove-background-rembg with AI Best (ISNet) config`);
+        console.log('Model: isnet-general-use, Alpha Matting: false, FG: 220, BG: 15, Erode: 11');
+      } else if (method === 'rembg_u2net') {
+        // AI Fast (U2Net) configuration
+        formData.append('model', 'u2net');
+        formData.append('alpha_matting', false);  // Ensure boolean false
+        formData.append('fg_threshold', '240');
+        formData.append('bg_threshold', '10');
+        formData.append('erode_size', '11');
+        console.log(`Fetching ${API_URL}/remove-background-rembg with AI Fast (U2Net) config`);
+        console.log('Model: u2net, Alpha Matting: false, FG: 240, BG: 10, Erode: 11');
+      }
+      
+      const response = await fetch(`${API_URL}/remove-background-rembg`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      console.log('Rembg background removal response status:', response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `HTTP error! status: ${response.status}, message: ${errorText}`,
+        );
+      }
+
+      const result = await response.json();
+      console.log(
+        'Rembg background removal result received, image_data length:',
+        result.image_data?.length,
+      );
+
+      // Store original image for re-processing with different colors
+      setBgRemovalOriginalImage(selectedImage);
+
+      setBgRemovalState(prev => ({
+        ...prev,
+        processedImageData: result.image_data, // Preview image (resized)
+        analysisImage: result.analysis_image_data, // Analysis image (original resolution)
+        showColorPalette: true,
+      }));
+      
+      console.log('Rembg background removal completed successfully');
+    } catch (error: any) {
+      const errorMessage = error?.message || String(error) || 'Unknown error';
+      console.error('Rembg background removal error:', errorMessage);
+      console.error('Full error:', error);
+      
+      // Provide helpful error message
+      if (errorMessage.includes('Unable to allocate')) {
+        const methodName = method === 'rembg_isnet' ? 'AI Best (ISNet)' : 'AI Fast (U2Net)';
+        const alternativeMethod = method === 'rembg_isnet' ? 'AI Fast (U2Net)' : 'HSV method';
+        
+        Alert.alert(
+          'Memory Issue',
+          `Image too large for ${methodName} processing. Try:\n\n1. Use HSV method for large images\n2. Resize image before AI processing\n3. Try ${alternativeMethod} for better memory efficiency`,
+          [
+            { text: 'Try HSV', onPress: () => console.log('User chose HSV') },
+            { text: 'Try AI Fast', onPress: () => console.log('User chose AI Fast') },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
+      } else {
+        Alert.alert('Error', `Failed to remove background: ${errorMessage}`);
+      }
     } finally {
       setBgRemovalState(prev => ({ ...prev, isRemoving: false }));
     }
@@ -303,8 +439,8 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
         name: 'plant_image.jpg',
       } as any);
 
-      // If background was removed, send color + rotation for processing
-      if (bgRemovalState.processedImageData) {
+      // If background was removed, send analysis image (original resolution) for processing
+      if (bgRemovalState.analysisImage) {
         // Send selected background color (keep # prefix for valid hex format)
         formData.append('background_color', bgRemovalState.backgroundColor);
 
@@ -314,7 +450,20 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
         }
 
         console.log(
-          `Analyzing: ORIGINAL + ROTATION(${imageRotation}°) + COLOR (${bgRemovalState.backgroundColor} background)`,
+          `Analyzing: ORIGINAL RESOLUTION + ROTATION(${imageRotation}°) + COLOR (${bgRemovalState.backgroundColor} background)`,
+        );
+      } else if (bgRemovalState.processedImageData) {
+        // Fallback to preview image if analysis image not available
+        // Send selected background color (keep # prefix for valid hex format)
+        formData.append('background_color', bgRemovalState.backgroundColor);
+
+        // Also send rotation angle (in case user rotated before background removal)
+        if (imageRotation !== 0) {
+          formData.append('rotation', imageRotation.toString());
+        }
+
+        console.log(
+          `Analyzing: PREVIEW IMAGE (resized) + ROTATION(${imageRotation}°) + COLOR (${bgRemovalState.backgroundColor} background)`,
         );
       } else {
         console.log('Analyzing: ORIGINAL image only (background NOT removed)');
@@ -331,6 +480,9 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
 
       // Enable debug image generation
       formData.append('save_debug', 'true');
+
+      // Add analysis resolution preference
+      formData.append('analysis_resolution', analysisResolution);
 
       // Add user_id to request
       formData.append('user_id', userId);
@@ -447,8 +599,13 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
             showColorPalette: false,
             backgroundColor: '#ffffff',
             processedImageData: null,
+            bgRemovalMethod: 'hsv',
           });
           setBgRemovalOriginalImage(null);
+          setAnalysisResolution('original'); // Reset to default
+    setHsvResolution('original'); // Reset HSV to original
+    setAiFastResolution('original'); // Reset AI Fast to original
+    setAiBestResolution('original'); // Reset AI Best to original
         },
         style: 'destructive',
       },
@@ -606,8 +763,13 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
                         showColorPalette: false,
                         backgroundColor: '#ffffff',
                         processedImageData: null,
+                        bgRemovalMethod: 'hsv',
                       });
                       setBgRemovalOriginalImage(null);
+                      setAnalysisResolution('original'); // Reset to default
+    setHsvResolution('original'); // Reset HSV to original
+    setAiFastResolution('original'); // Reset AI Fast to original
+    setAiBestResolution('original'); // Reset AI Best to original
                     }}
                   >
                     <Text style={styles.removeTextCorner}>✕</Text>
@@ -631,27 +793,192 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
               {/* Background Removal Section */}
               <View style={styles.bgRemovalSection}>
                 <Text style={styles.bgRemovalTitle}>
-                  🎨 Background Processing
+                  🎨 Background Removal
                 </Text>
 
-                {/* Background Removal Button */}
-                <TouchableOpacity
-                  style={[
-                    styles.bgButton,
-                    bgRemovalState.isRemoving && styles.disabledButton,
-                  ]}
-                  onPress={removeBackground}
-                  disabled={bgRemovalState.isRemoving}
-                  activeOpacity={0.85}
-                >
-                  {bgRemovalState.isRemoving ? (
-                    <ActivityIndicator size="large" color="#fff" />
-                  ) : (
-                    <Text style={styles.bgButtonText}>
-                      🗑️ Remove Background
-                    </Text>
-                  )}
-                </TouchableOpacity>
+                {/* Background Removal Buttons */}
+                <View style={styles.bgButtonsContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.bgSmallButton,
+                      bgRemovalState.isRemoving && styles.disabledButton,
+                      { backgroundColor: '#16a34a' }
+                    ]}
+                    onPress={removeBackground}
+                    disabled={bgRemovalState.isRemoving}
+                    activeOpacity={0.85}
+                  >
+                    {bgRemovalState.isRemoving ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.bgSmallButtonText}>
+                        HSV
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.bgSmallButton,
+                      bgRemovalState.isRemoving && styles.disabledButton,
+                      { backgroundColor: '#3b82f6' }
+                    ]}
+                    onPress={() => {
+                      setBgRemovalState(prev => ({ ...prev, bgRemovalMethod: 'rembg_u2net' }));
+                      removeBackgroundRembg('rembg_u2net');
+                    }}
+                    disabled={bgRemovalState.isRemoving}
+                    activeOpacity={0.85}
+                  >
+                    {bgRemovalState.isRemoving ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.bgSmallButtonText}>
+                        AI Fast
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.bgSmallButton,
+                      bgRemovalState.isRemoving && styles.disabledButton,
+                      { backgroundColor: '#8b5cf6' }
+                    ]}
+                    onPress={() => {
+                      setBgRemovalState(prev => ({ ...prev, bgRemovalMethod: 'rembg_isnet' }));
+                      removeBackgroundRembg('rembg_isnet');
+                    }}
+                    disabled={bgRemovalState.isRemoving}
+                    activeOpacity={0.85}
+                  >
+                    {bgRemovalState.isRemoving ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.bgSmallButtonText}>
+                        AI Best
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                {/* Resolution Controls for Background Removal Methods */}
+                {bgRemovalState.bgRemovalMethod === 'hsv' && (
+                  <View style={styles.resolutionSection}>
+                    <Text style={styles.resolutionTitle}>🌱 HSV Resolution</Text>
+                    <View style={styles.resolutionOptions}>
+                      <TouchableOpacity
+                        style={[
+                          styles.resolutionOption,
+                          hsvResolution === 'resize' && styles.resolutionOptionActive
+                        ]}
+                        onPress={() => setHsvResolution('resize')}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[
+                          styles.resolutionOptionText,
+                          hsvResolution === 'resize' && styles.resolutionOptionTextActive
+                        ]}>
+                          ⚡ Resize (Fast)
+                        </Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={[
+                          styles.resolutionOption,
+                          hsvResolution === 'original' && styles.resolutionOptionActive
+                        ]}
+                        onPress={() => setHsvResolution('original')}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[
+                          styles.resolutionOptionText,
+                          hsvResolution === 'original' && styles.resolutionOptionTextActive
+                        ]}>
+                          🎯 Original (Best Quality)
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                {bgRemovalState.bgRemovalMethod === 'rembg_u2net' && (
+                  <View style={styles.resolutionSection}>
+                    <Text style={styles.resolutionTitle}>⚡ AI Fast Resolution</Text>
+                    <View style={styles.resolutionOptions}>
+                      <TouchableOpacity
+                        style={[
+                          styles.resolutionOption,
+                          aiFastResolution === 'resize' && styles.resolutionOptionActive
+                        ]}
+                        onPress={() => setAiFastResolution('resize')}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[
+                          styles.resolutionOptionText,
+                          aiFastResolution === 'resize' && styles.resolutionOptionTextActive
+                        ]}>
+                          ⚡ Resize (Fast)
+                        </Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={[
+                          styles.resolutionOption,
+                          aiFastResolution === 'original' && styles.resolutionOptionActive
+                        ]}
+                        onPress={() => setAiFastResolution('original')}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[
+                          styles.resolutionOptionText,
+                          aiFastResolution === 'original' && styles.resolutionOptionTextActive
+                        ]}>
+                          🎯 Original (Best Quality)
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                {bgRemovalState.bgRemovalMethod === 'rembg_isnet' && (
+                  <View style={styles.resolutionSection}>
+                    <Text style={styles.resolutionTitle}>🎯 AI Best Resolution</Text>
+                    <View style={styles.resolutionOptions}>
+                      <TouchableOpacity
+                        style={[
+                          styles.resolutionOption,
+                          aiBestResolution === 'resize' && styles.resolutionOptionActive
+                        ]}
+                        onPress={() => setAiBestResolution('resize')}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[
+                          styles.resolutionOptionText,
+                          aiBestResolution === 'resize' && styles.resolutionOptionTextActive
+                        ]}>
+                          ⚡ Resize (Fast)
+                        </Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={[
+                          styles.resolutionOption,
+                          aiBestResolution === 'original' && styles.resolutionOptionActive
+                        ]}
+                        onPress={() => setAiBestResolution('original')}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[
+                          styles.resolutionOptionText,
+                          aiBestResolution === 'original' && styles.resolutionOptionTextActive
+                        ]}>
+                          🎯 Original (Best Quality)
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
 
                 {/* Color Palette Toggle */}
                 {bgRemovalState.processedImageData && (
@@ -735,6 +1062,44 @@ function AppContent({ userId, apiUrl }: AppContentProps): React.JSX.Element {
               </View>
             </>
           )}
+        </View>
+
+        {/* Analysis Resolution Selection */}
+        <View style={styles.resolutionSection}>
+          <Text style={styles.resolutionTitle}>🔍 Analysis Resolution</Text>
+          <View style={styles.resolutionOptions}>
+            <TouchableOpacity
+              style={[
+                styles.resolutionOption,
+                analysisResolution === 'resize' && styles.resolutionOptionActive
+              ]}
+              onPress={() => setAnalysisResolution('resize')}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.resolutionOptionText,
+                analysisResolution === 'resize' && styles.resolutionOptionTextActive
+              ]}>
+                ⚡ Resize (Fast)
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.resolutionOption,
+                analysisResolution === 'original' && styles.resolutionOptionActive
+              ]}
+              onPress={() => setAnalysisResolution('original')}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.resolutionOptionText,
+                analysisResolution === 'original' && styles.resolutionOptionTextActive
+              ]}>
+                🎯 Original (Best Quality)
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Analyze Button */}
@@ -1724,6 +2089,84 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.semibold,
+  },
+  bgButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: Spacing[2],
+    marginBottom: Spacing[6],
+  },
+  bgSmallButton: {
+    flex: 1,
+    paddingVertical: Spacing[6],
+    paddingHorizontal: Spacing[4],
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 50,
+    elevation: 2,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  bgSmallButtonText: {
+    color: Colors.white,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.bold,
+    textAlign: 'center',
+  },
+  resolutionSection: {
+    marginHorizontal: Spacing[6],
+    marginVertical: Spacing[4],
+    paddingHorizontal: Spacing[8],
+    paddingVertical: Spacing[6],
+    backgroundColor: Colors.purpleLight,
+    borderRadius: BorderRadius.lg,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.purpleAccent,
+  },
+  resolutionTitle: {
+    fontSize: Typography.sizes.md,
+    fontWeight: Typography.weights.extrabold,
+    color: Colors.purpleDark,
+    marginBottom: Spacing[5],
+    letterSpacing: 0.2,
+  },
+  resolutionOptions: {
+    flexDirection: 'row',
+    gap: Spacing[3],
+  },
+  resolutionOption: {
+    flex: 1,
+    paddingVertical: Spacing[5],
+    paddingHorizontal: Spacing[4],
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.white,
+    borderWidth: 2,
+    borderColor: Colors.purpleAccent,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  resolutionOptionActive: {
+    backgroundColor: Colors.purpleAccent,
+    borderColor: Colors.purpleDark,
+  },
+  resolutionOptionText: {
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold,
+    color: Colors.purpleDark,
+    textAlign: 'center',
+  },
+  resolutionOptionTextActive: {
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.white,
+    textAlign: 'center',
   },
 });
 
